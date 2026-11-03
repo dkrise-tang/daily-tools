@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:,">
+<title>健康档案 · 独立版</title>
+<style>
+:root{
+  --main:#0e7c66; --main2:#0a5c4c; --bg:#f4f6f5; --card:#fff; --line:#e2e8e6;
+  --txt:#1c2b28; --sub:#5c6f6a; --warn:#c2410c; --bad:#b91c1c; --ok:#15803d; --chip:#e6f4f0;
+  --field:#fff; --fieldline:#cbd5d1; --note-bg:#fffbeb; --note-line:#fde68a;
+  --sysline:#2563eb; --shadow:0 10px 30px rgba(10,40,32,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --main:#2fbf9f; --main2:#7fd8c2; --bg:#101614; --card:#1a211e; --line:#2b3631;
+    --txt:#e4edea; --sub:#9db3ab; --warn:#f59e6b; --bad:#f87171; --ok:#4ade80; --chip:#1e2f2a;
+    --field:#141a17; --fieldline:#3a4741; --note-bg:#2a2416; --note-line:#6b5a22;
+    --sysline:#7db4f5; --shadow:0 10px 30px rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55;padding-bottom:34px}
+header{background:linear-gradient(135deg,#0e7c66,#0a5c4c);color:#fff;padding:18px 16px 14px}
+header h1{font-size:20px;font-weight:700}
+header p{font-size:12.5px;opacity:.88;margin-top:3px}
+nav{display:flex;flex-wrap:wrap;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+nav button{flex:1 1 auto;white-space:nowrap;background:none;border:none;padding:11px 8px;font-size:14.5px;color:var(--sub);cursor:pointer;border-bottom:3px solid transparent;font-family:inherit}
+nav button.on{color:var(--main);font-weight:700;border-bottom-color:var(--main)}
+main{max-width:760px;margin:0 auto;padding:14px 12px}
+section{display:none}
+section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.card h2{font-size:16px;margin-bottom:8px}
+.card h3{font-size:14.5px;margin:10px 0 6px;color:var(--main2)}
+.sub{color:var(--sub);font-size:12.5px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.stat{background:var(--chip);border-radius:10px;padding:10px}
+.stat b{font-size:19px;display:block}
+.stat span{font-size:12px;color:var(--sub)}
+label{display:block;font-size:13px;color:var(--sub);margin:8px 0 3px}
+input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--fieldline);border-radius:8px;font-size:15px;background:var(--field);color:var(--txt);font-family:inherit}
+textarea{min-height:110px;resize:vertical}
+.btn{display:inline-block;background:var(--main);color:#fff;border:none;border-radius:9px;padding:10px 16px;font-size:15px;cursor:pointer;margin:6px 6px 0 0;font-family:inherit}
+.btn.sec{background:var(--chip);color:var(--main2);border:1px solid var(--line)}
+.btn.danger{background:transparent;color:var(--bad);border:1px solid var(--bad)}
+.btn:disabled{opacity:.5}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{border-bottom:1px solid var(--line);padding:6px 5px;text-align:left;vertical-align:top}
+th{color:var(--sub);font-weight:600;font-size:12.5px}
+.abn{color:var(--bad);font-weight:700}
+.pill{display:inline-block;background:var(--chip);color:var(--main2);border-radius:20px;padding:1px 9px;font-size:12px;margin:2px 3px 2px 0}
+.pill.warn{background:var(--note-bg);color:var(--warn)}
+.pill.bad{background:transparent;color:var(--bad);border:1px solid var(--bad)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1;min-width:130px}
+.del{color:var(--bad);background:none;border:none;cursor:pointer;font-size:13px;font-family:inherit}
+details{border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:8px;background:var(--card)}
+summary{cursor:pointer;font-weight:600;font-size:14.5px}
+svg{max-width:100%;height:auto}
+.note{background:var(--note-bg);border:1px solid var(--note-line);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+/* 弹窗与提示（替代系统 alert/confirm/prompt，沙盒内可用） */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:60;padding:18px}
+#overlay.on{display:flex}
+.dialog{background:var(--card);color:var(--txt);border-radius:14px;padding:18px;width:100%;max-width:380px;box-shadow:var(--shadow)}
+.dialog p{font-size:15px;margin-bottom:6px}
+.dialog .btns{display:flex;gap:8px;margin-top:12px}
+.dialog .btns .btn{flex:1;margin:0;text-align:center}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:#1c2b28;color:#fff;padding:10px 18px;border-radius:24px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:70;max-width:88vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.antirow{display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--line);padding:9px 2px;cursor:pointer;font-family:inherit;color:var(--txt);font-size:14.5px}
+.antirow .box{flex:0 0 auto;width:22px;height:22px;border-radius:6px;border:2px solid var(--fieldline);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;margin-top:1px;background:transparent}
+.antirow.on .box{background:var(--main);border-color:var(--main)}
+.antirow .nm{font-weight:600}
+.autotag{color:var(--main);font-size:11.5px;font-weight:400}
+.fchip{display:inline-block;background:var(--chip);color:var(--main2);border:1px solid var(--line);border-radius:20px;padding:4px 12px;font-size:13px;margin:2px 4px 2px 0;cursor:pointer;font-family:inherit}
+.fchip.on{background:var(--main);color:#fff;border-color:var(--main)}
+.pill.ok{background:transparent;color:var(--ok);border:1px solid var(--ok)}
+.mxtable td,.mxtable th{text-align:center;padding:4px 2px;font-size:11.5px}
+.mxtable td:first-child,.mxtable th:first-child{text-align:left;white-space:nowrap}
+.dot-on{color:var(--main);font-weight:700}
+.dot-off{color:var(--fieldline)}
+.wkbody{font-size:14px;line-height:1.7}
+.wkbody .wh{font-weight:700;color:var(--main2);margin-top:10px}
+#legacyPrint{display:none}
+@media print{nav,header,.noprint{display:none!important}section{display:none!important}#tab-visit{display:block!important}body.printing-legacy #tab-visit{display:none!important}body.printing-legacy #legacyPrint{display:block!important}body{background:#fff}}
+</style>
+</head>
+<body>
+<header>
+<h1>我的健康档案</h1>
+<p>数据只保存在你这台设备的浏览器里，不上传服务器。建议每月到「数据备份」点一次导出备份。</p>
+</header>
+<nav id="tabs">
+<button data-tab="home" class="on">总览</button>
+<button data-tab="labs">化验检查</button>
+<button data-tab="bp">血压</button>
+<button data-tab="diet">饮食</button>
+<button data-tab="wiki">营养百科</button>
+<button data-tab="mind">健康认知</button>
+<button data-tab="pano">体检全景</button>
+<button data-tab="visit">就诊一页纸</button>
+<button data-tab="data">数据备份</button>
+</nav>
+<main>
+<!-- 总览 -->
+<section id="tab-home" class="on">
+<div class="card"><h2>个人档案</h2><div id="profileView"></div>
+<button class="btn sec" id="btnToggleProfile" style="margin-top:10px">编辑个人档案</button>
+<div id="profileFormWrap" style="display:none"><div id="profileForm"></div></div>
+</div>
+<div class="card"><h2>概览</h2><div class="grid" id="homeStats"></div><div id="homeTips" style="margin-top:10px"></div></div>
+</section>
+<!-- 化验 -->
+<section id="tab-labs">
+<div class="note">录入两种方式：①「粘贴报告文字」把体检/化验单文字粘进来，自动识别后先预览、确认再保存；②「手动添加」逐条填。趋势图只对比同名、同单位的数值。</div>
+<div class="card"><h2>粘贴报告文字自动录入</h2>
+<div class="row"><div><label>检查日期</label><input type="date" id="pasteDate"></div><div><label>机构</label><input id="pasteOrg" placeholder="如：XX医院体检中心"></div></div>
+<label>报告文字</label><textarea id="pasteText" placeholder="把报告里的文字粘贴到这里，每行一项最好，例如：&#10;低密度脂蛋白胆固醇 2.80 mmol/L 0-3.1&#10;空腹血糖 5.2 mmol/L 3.9-6.1"></textarea>
+<button class="btn" id="btnParse">识别预览</button>
+<div id="parsePreview"></div>
+</div>
+<div class="card"><h2>手动添加一条</h2>
+<div class="row"><div><label>日期</label><input type="date" id="mDate"></div><div><label>机构</label><input id="mOrg"></div></div>
+<div class="row"><div><label>分类</label><select id="mCat"></select></div><div><label>项目名</label><input id="mName" placeholder="如：低密度脂蛋白胆固醇"></div></div>
+<div class="row"><div><label>数值结果（数字，可空）</label><input id="mNum" inputmode="decimal"></div><div><label>文字结果（可空）</label><input id="mText" placeholder="如：未见明显异常 / 阴性"></div></div>
+<div class="row"><div><label>单位</label><input id="mUnit"></div><div><label>参考范围</label><input id="mRef" placeholder="如：0-3.1"></div></div>
+<label>标记</label><select id="mFlag"><option value="">正常/无</option><option value="偏高">偏高</option><option value="偏低">偏低</option></select>
+<button class="btn" id="btnAddLab">保存这条</button>
+</div>
+<div class="card"><h2>指标趋势</h2><label>选择指标（同名同单位才连线）</label><select id="trendSel"></select><div id="trendBox" style="margin-top:8px"></div></div>
+<div class="card"><h2>全部记录</h2><div id="labList"></div></div>
+</section>
+<!-- 血压 -->
+<section id="tab-bp">
+<div class="card"><h2>记录一次血压</h2>
+<div class="row"><div><label>收缩压（高压）</label><input id="bpSys" inputmode="numeric" placeholder="如：118"></div><div><label>舒张压（低压）</label><input id="bpDia" inputmode="numeric" placeholder="如：76"></div><div><label>心率（可空）</label><input id="bpPulse" inputmode="numeric"></div></div>
+<label>备注（可空）</label><input id="bpNote" placeholder="如：晨起、服药后">
+<button class="btn" id="btnAddBp">保存</button>
+</div>
+<div class="card"><h2>统计与趋势</h2><div id="bpStats"></div><div id="bpChart" style="margin-top:8px"></div></div>
+<div class="card"><h2>全部血压记录</h2><div id="bpList"></div></div>
+</section>
+<!-- 饮食 -->
+<section id="tab-diet">
+<div class="card"><h2>饮食简记</h2><label>日期</label><input type="date" id="dietDate">
+<div class="row"><div><label>餐次</label><select id="dietMeal"><option>早餐</option><option>午餐</option><option>晚餐</option><option>加餐</option></select></div>
+<div><label>食物（可自填）</label><input id="dietFood" list="foodList" placeholder="输入或从常用食物里选"><datalist id="foodList"></datalist></div>
+<div><label>数量（克，饮品按毫升）</label><input id="dietAmt" inputmode="decimal" placeholder="如：200"></div></div>
+<button class="btn" id="btnAddDiet">记一笔</button>
+<p class="sub" style="margin-top:6px">热量与蛋白质为常见食物的估算值，仅供日常参考。</p>
+</div>
+<div class="card"><h2>当日汇总</h2><div id="dietDay"></div></div>
+<div class="card"><h2>抗炎抗氧化清单（每日）</h2>
+<p class="sub">抗炎抗氧化看的是长期饮食结构，不是单日打分：某天缺一两项很正常，不扣分、不焦虑，重点是一周里大多数日子大体齐全。清单跟随上方「饮食简记」的日期；在饮食里记过的食物会自动勾上对应项（标注来源），手动点选的结果优先。</p>
+<div id="antiHead" style="margin:8px 0"></div>
+<div id="antiList"></div>
+<h3>近 7 天一览</h3>
+<div id="antiMatrix"></div>
+<div class="note" style="margin:10px 0 0">少吃这一头（促炎）：含糖饮料和果汁、油炸食品、加工肉（香肠、午餐肉、培根）、精制糖糕点、过量酒精、反复高温煎炸的油。把这一头降下来，和把清单吃齐同样重要。</div>
+</div>
+<div class="card"><h2>记录明细</h2><div id="dietList"></div></div>
+</section>
+<!-- 营养百科 -->
+<section id="tab-wiki">
+<div class="card"><h2>营养百科</h2>
+<input id="wikiSearch" placeholder="搜索标题或正文，如：咖啡醇">
+<div id="wikiChips" style="margin-top:8px"></div>
+<p class="sub" style="margin-top:6px">通用营养知识查阅区。标「Muse整理」的为预置条目，标「我的记录」的为你自己添加的；都可以编辑、删除。详细打勾版清单在「饮食」页，这里是完整查阅版。</p>
+</div>
+<div class="card"><h2 id="wikiFormTitle">新增条目</h2>
+<label>标题</label><input id="wkTitle" placeholder="如：维生素D怎么补">
+<label>分类</label><select id="wkCat"><option>抗炎抗氧化</option><option>血脂</option><option>脂肪酸</option><option>补充剂</option><option>饮品</option><option>其他</option></select>
+<label>正文</label><textarea id="wkBody" style="min-height:140px" placeholder="把要点写在这里，可分行分段"></textarea>
+<button class="btn" id="btnSaveWiki">保存条目</button>
+<button class="btn sec" id="btnCancelWiki" style="display:none">取消编辑</button>
+</div>
+<div id="wikiList"></div>
+</section>
+<!-- 健康认知 -->
+<section id="tab-mind">
+<div class="card"><h2>给子女的健康传承</h2>
+<p class="sub">这一卡只汇总下方标了「遗传相关」的认知条目，普通的观察和推测不会混进来。可以把本页打印或截图留给子女参考。</p>
+<div id="legacyList" style="margin-top:8px"></div>
+<label>家族史补充（父母、兄弟姐妹的健康情况，档案里没有的靠这里记）</label>
+<textarea id="legacyFamilyText" style="min-height:70px" placeholder="例如：父亲有高血压，60岁后确诊；母亲有糖尿病……"></textarea>
+<button class="btn sec" id="btnSaveLegacyFamily">保存家族史补充</button>
+<button class="btn" id="btnLegacyPreview">预览《给子女的健康提示》</button>
+<div id="legacyPreview" style="display:none;margin-top:12px"></div>
+</div>
+<div class="card"><h2 id="insFormTitle">记一条健康认知</h2>
+<label>标题（一句话概括）</label><input id="insTitle" placeholder="如：黑眼圈可能和鼻炎有关">
+<label>观察到什么</label><textarea id="insObs" style="min-height:64px" placeholder="把你注意到的现象写下来"></textarea>
+<label>我的理解</label><textarea id="insIdea" style="min-height:64px" placeholder="你认为是什么原因、有什么道理"></textarea>
+<div class="row"><div><label>可信程度（状态）</label><select id="insStatus"><option>个人推测·未验证</option><option>医生已确认</option><option>检查已证实</option></select></div>
+<div><label>与遗传相关（会进传承卡）</label><select id="insHered"><option value="">否</option><option value="1">是，遗传相关</option></select></div></div>
+<label>依据 / 下一步怎么验证</label><input id="insNext" placeholder="如：下次体检加查XX；或复诊时问医生">
+<button class="btn" id="btnSaveIns">保存这条认知</button>
+<button class="btn sec" id="btnCancelIns" style="display:none">取消编辑</button>
+</div>
+<div class="card"><h2>我的认知条目</h2><div id="insList"></div></div>
+</section>
+<!-- 体检全景 -->
+<section id="tab-pano">
+<div class="note">按常规体检项目清单逐项对照：有对应化验/检查记录的显示最近日期；线下做了但没录进来的，可以手动标「已完成」并填日期。「按需」项请结合年龄、家族史和医生建议决定。</div>
+<div class="card"><h2>项目对照</h2><div id="panoList"></div></div>
+</section>
+<!-- 就诊一页纸 -->
+<section id="tab-visit">
+<div class="card"><h2>就诊一页纸</h2><p class="sub">看医生时出示这一页即可：基础情况、过敏、用药、近期血压与关键化验。用手机浏览器菜单里的「打印」或截图保存也可以带走。</p><div id="visitBody" style="margin-top:8px"></div></div>
+</section>
+<!-- 数据 -->
+<section id="tab-data">
+<div class="card"><h2>备份与恢复</h2>
+<p class="sub">数据保存在当前浏览器的本地存储里。换手机、清浏览器缓存都会丢数据，请定期导出备份文件保存好（微信收藏、网盘、电脑都可以）。在新设备上打开本页，再导入备份文件即可恢复。</p>
+<div id="dataCounts" style="margin:8px 0"></div>
+<button class="btn" id="btnExport">导出备份文件（JSON）</button>
+<label style="margin-top:14px">从备份文件恢复（会覆盖当前数据）</label>
+<input type="file" id="importFile" accept=".json,application/json">
+<button class="btn sec" id="btnImport">导入所选备份</button>
+<div style="margin-top:18px"><button class="btn danger" id="btnWipe">清空全部数据</button></div>
+</div>
+<div class="card"><h2>使用说明</h2>
+<p class="sub">1. 以后固定用同一个浏览器打开这个链接，数据才会连续（在微信里打开和在手机浏览器里打开是两份互不相通的数据）。<br>2. 化验数值只做记录和趋势参考，不做诊断；指标异常请咨询医生。<br>3. 就诊时打开「就诊一页纸」给医生看，可以省去口头描述。</p>
+</div>
+</section>
+</main>
+<div id="legacyPrint"></div>
+<div id="overlay"><div class="dialog" role="alertdialog" aria-modal="true">
+<p id="dlgMsg"></p>
+<div id="dlgField" style="display:none"><label id="dlgLabel"></label><input id="dlgInput"></div>
+<div class="btns"><button class="btn sec" id="dlgCancel">取消</button><button class="btn" id="dlgOk">确定</button></div>
+</div></div>
+<div id="toast"></div>
+<script>
+'use strict';
+var LSKEY='jiankangdangan-family-v1';
+var CATS=['血常规','尿常规','粪便常规','肝功能','肾功能','电解质','血脂','血糖','甲状腺功能','肿瘤标志物','凝血功能','心肌酶','炎症','骨代谢','影像检查','专科检查','其他'];
+var state={profile:{},labs:[],bps:[],diet:[],checks:{},anti:{},wiki:[],wikiSeeded:false,insights:[],legacyFamily:''};
+function normalizeState(){
+if(!state.profile||typeof state.profile!=='object')state.profile={};
+if(!Array.isArray(state.labs))state.labs=[];
+if(!Array.isArray(state.bps))state.bps=[];
+if(!Array.isArray(state.diet))state.diet=[];
+if(!state.checks||typeof state.checks!=='object')state.checks={};
+if(!state.anti||typeof state.anti!=='object'||Array.isArray(state.anti))state.anti={};
+if(!Array.isArray(state.insights))state.insights=[];
+if(typeof state.legacyFamily!=='string')state.legacyFamily='';
+if(state.wikiSeeded!==true){state.wiki=seedWiki();state.wikiSeeded=true;}
+if(!Array.isArray(state.wiki))state.wiki=[];}
+function load(){try{var s=localStorage.getItem(LSKEY);if(s){var d=JSON.parse(s);if(d&&d.labs)state=d;}}catch(e){}normalizeState();}
+function save(){try{localStorage.setItem(LSKEY,JSON.stringify(state));}catch(e){toast('保存失败：浏览器存储空间不足，请先导出备份。');}}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function ageOf(bd){if(!bd)return null;var b=new Date(bd),n=new Date(),a=n.getFullYear()-b.getFullYear();if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))a--;return a;}
+function bmiOf(p){if(!p.height||!p.weight)return null;var h=p.height/100;return p.weight/(h*h);}
+/* ---------- 弹窗与提示 ---------- */
+var toastTimer=null;
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove('on');},2400);}
+var dlgCb=null,dlgHasField=false;
+function askDialog(msg,opts,cb){opts=opts||{};dlgCb=cb;dlgHasField=!!opts.field;
+document.getElementById('dlgMsg').textContent=msg;
+var f=document.getElementById('dlgField');f.style.display=dlgHasField?'block':'none';
+if(dlgHasField){document.getElementById('dlgLabel').textContent=opts.fieldLabel||'';var inp=document.getElementById('dlgInput');inp.type=opts.fieldType||'text';inp.value=opts.fieldValue||'';}
+document.getElementById('dlgOk').textContent=opts.okText||'确定';
+document.getElementById('overlay').classList.add('on');}
+document.getElementById('dlgCancel').onclick=function(){document.getElementById('overlay').classList.remove('on');dlgCb=null;};
+document.getElementById('dlgOk').onclick=function(){document.getElementById('overlay').classList.remove('on');var cb=dlgCb;dlgCb=null;if(cb)cb(dlgHasField?document.getElementById('dlgInput').value:null);};
+/* ---------- 页签 ---------- */
+document.getElementById('tabs').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
+document.querySelectorAll('#tabs button').forEach(function(x){x.classList.toggle('on',x===b);});
+document.querySelectorAll('main section').forEach(function(s){s.classList.toggle('on',s.id==='tab-'+b.dataset.tab);});
+renderAll();});
+/* ---------- 个人档案 ---------- */
+var PFIELDS=[['name','姓名'],['gender','性别（男/女）'],['birth','出生日期（年-月-日）'],['height','身高（cm）'],['weight','体重（kg）'],['blood','血型'],['allergies','过敏史'],['conditions','已诊断疾病'],['meds','正在用药'],['family','家族史'],['smoke','吸烟情况'],['drink','饮酒情况'],['surgery','手术史']];
+document.getElementById('btnToggleProfile').onclick=function(){
+var w=document.getElementById('profileFormWrap');var open=w.style.display!=='none';
+w.style.display=open?'none':'block';this.textContent=open?'编辑个人档案':'收起编辑';};
+function renderProfile(){
+var p=state.profile,v=document.getElementById('profileView');
+if(!p.name){v.innerHTML='<p class="sub">还没有填写。点开下面「编辑个人档案」，先把基础信息填上。</p>';}
+else{var bmi=bmiOf(p),age=ageOf(p.birth);
+v.innerHTML='<table>'+PFIELDS.map(function(f){var val=p[f[0]];if(!val)return'';return '<tr><th style="width:110px">'+f[1]+'</th><td>'+esc(val)+'</td></tr>';}).join('')+
+(age!=null?'<tr><th>年龄</th><td>'+age+' 岁</td></tr>':'')+(bmi?'<tr><th>BMI</th><td>'+bmi.toFixed(1)+'</td></tr>':'')+'</table>';}
+document.getElementById('profileForm').innerHTML=PFIELDS.map(function(f){
+var type=f[0]==='birth'?'date':(f[0]==='height'||f[0]==='weight')?'number':'text';
+return '<label>'+f[1]+'</label><input data-pf="'+f[0]+'" type="'+type+'" value="'+esc(state.profile[f[0]]||'')+'">';}).join('')+
+'<button class="btn" id="btnSaveProfile">保存档案</button>';
+document.getElementById('btnSaveProfile').onclick=function(){
+document.querySelectorAll('[data-pf]').forEach(function(i){var k=i.dataset.pf;state.profile[k]=(k==='height'||k==='weight')?(parseFloat(i.value)||''):i.value.trim();});
+save();renderAll();toast('个人档案已保存');};
+}
+/* ---------- 化验：粘贴解析 ---------- */
+var DICT=[
+['低密度脂蛋白胆固醇','血脂'],['高密度脂蛋白胆固醇','血脂'],['总胆固醇','血脂'],['甘油三酯','血脂'],['载脂蛋白A1','血脂'],['载脂蛋白B','血脂'],['脂蛋白(a)','血脂'],['脂蛋白a','血脂'],
+['谷丙转氨酶','肝功能'],['谷草转氨酶','肝功能'],['丙氨酸氨基转移酶','肝功能'],['天门冬氨酸氨基转移酶','肝功能'],['总胆红素','肝功能'],['直接胆红素','肝功能'],['间接胆红素','肝功能'],['总蛋白','肝功能'],['白蛋白','肝功能'],['球蛋白','肝功能'],['碱性磷酸酶','肝功能'],['谷氨酰转肽酶','肝功能'],['总胆汁酸','肝功能'],
+['肌酐','肾功能'],['尿素氮','肾功能'],['尿素','肾功能'],['尿酸','肾功能'],['胱抑素C','肾功能'],['肾小球滤过率','肾功能'],
+['空腹血糖','血糖'],['餐后2小时血糖','血糖'],['糖化血红蛋白','血糖'],['葡萄糖','血糖'],
+['钾','电解质'],['钠','电解质'],['氯','电解质'],['总钙','电解质'],['钙','电解质'],['磷','电解质'],['镁','电解质'],
+['白细胞','血常规'],['红细胞','血常规'],['血红蛋白','血常规'],['血小板','血常规'],['红细胞压积','血常规'],['中性粒细胞百分比','血常规'],['淋巴细胞百分比','血常规'],['平均红细胞体积','血常规'],
+['尿蛋白','尿常规'],['尿潜血','尿常规'],['尿白细胞','尿常规'],['尿糖','尿常规'],['尿比重','尿常规'],['尿酮体','尿常规'],
+['促甲状腺激素','甲状腺功能'],['游离三碘甲状腺原氨酸','甲状腺功能'],['游离甲状腺素','甲状腺功能'],['三碘甲状腺原氨酸','甲状腺功能'],['甲状腺素','甲状腺功能'],
+['甲胎蛋白','肿瘤标志物'],['癌胚抗原','肿瘤标志物'],['糖类抗原199','肿瘤标志物'],['糖类抗原125','肿瘤标志物'],['糖类抗原153','肿瘤标志物'],['前列腺特异性抗原','肿瘤标志物'],
+['凝血酶原时间','凝血功能'],['活化部分凝血活酶时间','凝血功能'],['纤维蛋白原','凝血功能'],['D-二聚体','凝血功能'],
+['肌酸激酶','心肌酶'],['肌酸激酶同工酶','心肌酶'],['乳酸脱氢酶','心肌酶'],['肌钙蛋白','心肌酶'],
+['超敏C反应蛋白','炎症'],['C反应蛋白','炎症'],['血沉','炎症'],['降钙素原','炎症'],
+['25-羟维生素D','骨代谢'],['甲状旁腺激素','骨代谢'],['骨钙素','骨代谢']];
+DICT.sort(function(a,b){return b[0].length-a[0].length;});
+var UNITS=['mmol/L','μmol/L','umol/L','mg/dL','mg/L','g/L','U/L','IU/L','ng/mL','pg/mL','μg/L','ug/L','mIU/L','%','x10^9/L','x10^12/L','fL','pg','mm/h','s','nmol/L','pmol/L'];
+function parseReport(text){
+var out=[],lines=text.split(/\r?\n/);
+lines.forEach(function(raw){
+var line=raw.trim();if(line.length<2)return;
+var hit=null;
+for(var i=0;i<DICT.length;i++){if(line.indexOf(DICT[i][0])>=0){hit=DICT[i];break;}}
+var numM=line.match(/[-+]?\d+\.?\d*/);
+var textRes='';['阴性','阳性','弱阳性','未见明显异常','正常'].forEach(function(w){if(line.indexOf(w)>=0&&!textRes)textRes=w;});
+if(!hit&&!numM&&!textRes)return;
+var unit='';UNITS.forEach(function(u){if(!unit&&line.indexOf(u)>=0)unit=u;});
+var refM=line.match(/(\d+\.?\d*)\s*[-~—]\s*(\d+\.?\d*)/);
+var ref=refM?refM[1]+'-'+refM[2]:'';
+var flag='';if(/↑|偏高|高于/.test(line))flag='偏高';if(/↓|偏低|低于/.test(line))flag='偏低';
+out.push({name:hit?hit[0]:line.slice(0,14),cat:hit?hit[1]:'其他',num:numM?parseFloat(numM[0]):null,text:textRes,unit:unit,ref:ref,flag:flag});});
+return out;}
+var pendingParse=[];
+function renderLabs(){
+document.getElementById('mCat').innerHTML=CATS.map(function(c){return '<option>'+c+'</option>';}).join('');
+var box=document.getElementById('labList');
+if(!state.labs.length){box.innerHTML='<p class="sub">还没有记录。</p>';}
+else{var sorted=state.labs.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+var groups={},order=[];
+sorted.forEach(function(r){var k=r.date+'|'+(r.org||'');if(!groups[k]){groups[k]=[];order.push(k);}groups[k].push(r);});
+box.innerHTML=order.slice().reverse().map(function(k){var parts=k.split('|');
+return '<details><summary>'+esc(parts[0])+' '+esc(parts[1])+'（'+groups[k].length+' 项）</summary><table><tr><th>项目</th><th>结果</th><th>参考</th><th></th></tr>'+
+groups[k].map(function(r){var res=r.num!=null?String(r.num)+' '+esc(r.unit||''):esc(r.text||'');
+return '<tr><td>'+esc(r.name)+'<br><span class="sub">'+esc(r.cat)+'</span></td><td class="'+(r.flag?'abn':'')+'">'+res+(r.flag?'（'+esc(r.flag)+'）':'')+'</td><td class="sub">'+esc(r.ref||'')+'</td><td><button class="del" data-dellab="'+r.id+'">删</button></td></tr>';}).join('')+'</table></details>';}).join('');}
+box.querySelectorAll('[data-dellab]').forEach(function(b){b.onclick=function(){askDialog('删除这一条记录？',{},function(){state.labs=state.labs.filter(function(r){return r.id!==b.dataset.dellab;});save();renderAll();toast('已删除');});};});
+var names={};state.labs.forEach(function(r){if(r.num!=null)names[r.name+'|'+(r.unit||'')]=1;});
+var sel=document.getElementById('trendSel'),cur=sel.value;
+sel.innerHTML='<option value="">— 选择指标 —</option>'+Object.keys(names).sort().map(function(k){var p=k.split('|');return '<option value="'+esc(k)+'">'+esc(p[0])+(p[1]?'（'+esc(p[1])+'）':'')+'</option>';}).join('');
+if(cur)sel.value=cur;
+drawTrend();}
+function drawTrend(){
+var box=document.getElementById('trendBox'),k=document.getElementById('trendSel').value;
+if(!k){box.innerHTML='';return;}
+var p=k.split('|'),name=p[0],unit=p[1]||'';
+var pts=state.labs.filter(function(r){return r.name===name&&(r.unit||'')===unit&&r.num!=null;}).sort(function(a,b){return a.date<b.date?-1:1;});
+if(pts.length<2){box.innerHTML='<p class="sub">「'+esc(name)+'」只有 '+pts.length+' 个数值点，至少 2 次同名同单位记录才能连成趋势。</p>';return;}
+var W=640,H=200,PL=44,PR=12,PT=12,PB=26;
+var vals=pts.map(function(r){return r.num;}),mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);
+var refNums=(pts[pts.length-1].ref||'').match(/[-+]?\d+\.?\d*/g);
+if(refNums&&refNums.length>=2){mn=Math.min(mn,parseFloat(refNums[0]));mx=Math.max(mx,parseFloat(refNums[1]));}
+if(mx===mn)mx=mn+1;var pad=(mx-mn)*0.15;mn-=pad;mx+=pad;
+function X(i){return PL+(W-PL-PR)*i/(pts.length-1);}
+function Y(v){return PT+(H-PT-PB)*(1-(v-mn)/(mx-mn));}
+var s='<svg viewBox="0 0 '+W+' '+H+'" role="img">';
+if(refNums&&refNums.length>=2){var y1=Y(parseFloat(refNums[1])),y2=Y(parseFloat(refNums[0]));s+='<rect x="'+PL+'" y="'+y1+'" width="'+(W-PL-PR)+'" height="'+Math.max(1,y2-y1)+'" style="fill:var(--chip)"/>';}
+s+='<line x1="'+PL+'" y1="'+(H-PB)+'" x2="'+(W-PR)+'" y2="'+(H-PB)+'" style="stroke:var(--fieldline)"/>';
+s+='<polyline fill="none" stroke-width="2" style="stroke:var(--main)" points="'+pts.map(function(r,i){return X(i)+','+Y(r.num);}).join(' ')+'"/>';
+pts.forEach(function(r,i){s+='<circle cx="'+X(i)+'" cy="'+Y(r.num)+'" r="3.5" style="fill:var(--main)"/><text x="'+X(i)+'" y="'+(Y(r.num)-8)+'" font-size="11" text-anchor="middle" style="fill:var(--txt)">'+r.num+'</text><text x="'+X(i)+'" y="'+(H-8)+'" font-size="10" text-anchor="middle" style="fill:var(--sub)">'+r.date.slice(2)+'</text>';});
+s+='<text x="4" y="'+(PT+4)+'" font-size="10" style="fill:var(--sub)">'+mx.toFixed(1)+'</text><text x="4" y="'+(H-PB)+'" font-size="10" style="fill:var(--sub)">'+mn.toFixed(1)+'</text></svg>';
+box.innerHTML=s+'<p class="sub">'+esc(name)+'，共 '+pts.length+' 次记录。浅色带为最近一次记录的参考范围（如有）。</p>';}
+document.getElementById('trendSel').addEventListener('change',drawTrend);
+function showParsePreview(){
+var box=document.getElementById('parsePreview');
+if(!pendingParse.length){box.innerHTML='<p class="sub" style="margin-top:8px">没有识别到项目。可以换成每行一项的文字，或用下面「手动添加」。</p>';return;}
+box.innerHTML='<h3>识别到 '+pendingParse.length+' 项，请核对后确认保存</h3><table><tr><th>项目</th><th>分类</th><th>结果</th><th>参考</th><th></th></tr>'+
+pendingParse.map(function(r,i){return '<tr><td><input data-pp="'+i+'|name" value="'+esc(r.name)+'"></td><td><select data-pp="'+i+'|cat">'+CATS.map(function(c){return '<option '+(c===r.cat?'selected':'')+'>'+c+'</option>';}).join('')+'</select></td><td><input data-pp="'+i+'|res" value="'+(r.num!=null?r.num:esc(r.text||''))+'"><input data-pp="'+i+'|unit" value="'+esc(r.unit)+'" placeholder="单位" style="margin-top:3px"></td><td><input data-pp="'+i+'|ref" value="'+esc(r.ref)+'"></td><td><button class="del" data-ppdel="'+i+'">删</button></td></tr>';}).join('')+
+'</table><button class="btn" id="btnConfirmParse">确认保存这些</button>';
+box.querySelectorAll('[data-ppdel]').forEach(function(b){b.onclick=function(){pendingParse.splice(parseInt(b.dataset.ppdel,10),1);showParsePreview();};});
+document.getElementById('btnConfirmParse').onclick=function(){
+var date=document.getElementById('pasteDate').value||today(),org=document.getElementById('pasteOrg').value.trim();
+pendingParse.forEach(function(r,i){
+function g(f){var el=box.querySelector('[data-pp="'+i+'|'+f+'"]');return el?el.value.trim():'';}
+var res=g('res'),num=parseFloat(res);
+state.labs.push({id:uid(),date:date,org:org,cat:g('cat'),name:g('name'),num:isNaN(num)?null:num,text:isNaN(num)?res:'',unit:g('unit'),ref:g('ref'),flag:r.flag});});
+var n=pendingParse.length;save();pendingParse=[];box.innerHTML='';renderAll();toast('已保存 '+n+' 项');};}
+document.getElementById('btnParse').onclick=function(){
+var t=document.getElementById('pasteText').value;
+if(!t.trim()){toast('先把报告文字粘贴进来');return;}
+pendingParse=parseReport(t);
+showParsePreview();};
+document.getElementById('btnAddLab').onclick=function(){
+var name=document.getElementById('mName').value.trim();if(!name){toast('项目名不能为空');return;}
+var numV=document.getElementById('mNum').value.trim(),num=parseFloat(numV);
+state.labs.push({id:uid(),date:document.getElementById('mDate').value||today(),org:document.getElementById('mOrg').value.trim(),cat:document.getElementById('mCat').value,name:name,num:isNaN(num)?null:num,text:document.getElementById('mText').value.trim(),unit:document.getElementById('mUnit').value.trim(),ref:document.getElementById('mRef').value.trim(),flag:document.getElementById('mFlag').value});
+save();['mName','mNum','mText','mUnit','mRef'].forEach(function(id){document.getElementById(id).value='';});renderAll();toast('已保存');};
+/* ---------- 血压 ---------- */
+function renderBp(){
+var list=document.getElementById('bpList');
+var sorted=state.bps.slice().sort(function(a,b){return a.dt<b.dt?1:-1;});
+list.innerHTML=sorted.length?'<table><tr><th>时间</th><th>血压</th><th>心率</th><th>备注</th><th></th></tr>'+sorted.map(function(r){return '<tr><td>'+esc(r.dt.replace('T',' '))+'</td><td>'+r.sys+'/'+r.dia+'</td><td>'+(r.pulse||'')+'</td><td class="sub">'+esc(r.note||'')+'</td><td><button class="del" data-delbp="'+r.id+'">删</button></td></tr>';}).join('')+'</table>':'<p class="sub">还没有记录。</p>';
+list.querySelectorAll('[data-delbp]').forEach(function(b){b.onclick=function(){askDialog('删除这条血压记录？',{},function(){state.bps=state.bps.filter(function(r){return r.id!==b.dataset.delbp;});save();renderAll();toast('已删除');});};});
+var st=document.getElementById('bpStats');
+if(!state.bps.length){st.innerHTML='<p class="sub">暂无数据。</p>';document.getElementById('bpChart').innerHTML='';return;}
+function avg(arr){return arr.reduce(function(a,b){return a+b;},0)/arr.length;}
+var recent=state.bps.slice().sort(function(a,b){return a.dt<b.dt?-1:1;}).slice(-10);
+st.innerHTML='<div class="grid"><div class="stat"><b>'+Math.round(avg(recent.map(function(r){return r.sys;})))+'/'+Math.round(avg(recent.map(function(r){return r.dia;})))+'</b><span>最近 '+recent.length+' 次平均</span></div><div class="stat"><b>'+state.bps.length+'</b><span>总记录次数</span></div></div><p class="sub" style="margin-top:6px">家庭自测血压与医院诊室血压分开看待；单次读数受状态影响大，看平均和趋势。</p>';
+var pts=state.bps.slice().sort(function(a,b){return a.dt<b.dt?-1:1;});
+if(pts.length>=2){var W=640,H=190,PL=36,PR=10,PT=12,PB=24;
+var all=[];pts.forEach(function(r){all.push(r.sys,r.dia);});var mn=Math.min.apply(null,all)-8,mx=Math.max.apply(null,all)+8;
+function X(i){return PL+(W-PL-PR)*i/(pts.length-1);}function Y(v){return PT+(H-PT-PB)*(1-(v-mn)/(mx-mn));}
+var s='<svg viewBox="0 0 '+W+' '+H+'"><polyline fill="none" stroke-width="2" style="stroke:var(--bad)" points="'+pts.map(function(r,i){return X(i)+','+Y(r.sys);}).join(' ')+'"/><polyline fill="none" stroke-width="2" style="stroke:var(--sysline)" points="'+pts.map(function(r,i){return X(i)+','+Y(r.dia);}).join(' ')+'"/>';
+pts.forEach(function(r,i){s+='<circle cx="'+X(i)+'" cy="'+Y(r.sys)+'" r="3" style="fill:var(--bad)"/><circle cx="'+X(i)+'" cy="'+Y(r.dia)+'" r="3" style="fill:var(--sysline)"/>';});
+s+='</svg>';document.getElementById('bpChart').innerHTML=s+'<p class="sub">红线收缩压，蓝线舒张压。</p>';}
+else document.getElementById('bpChart').innerHTML='';}
+document.getElementById('btnAddBp').onclick=function(){
+var sys=parseInt(document.getElementById('bpSys').value,10),dia=parseInt(document.getElementById('bpDia').value,10);
+if(!sys||!dia){toast('请填写收缩压和舒张压');return;}
+var now=new Date(),dt=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+'T'+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+state.bps.push({id:uid(),dt:dt,sys:sys,dia:dia,pulse:parseInt(document.getElementById('bpPulse').value,10)||null,note:document.getElementById('bpNote').value.trim()});
+save();['bpSys','bpDia','bpPulse','bpNote'].forEach(function(id){document.getElementById(id).value='';});renderAll();toast('血压已保存');};
+/* ---------- 饮食 ---------- */
+var FOODS={'主食':[['米饭',116,2.6],['馒头',223,7.0],['面条（煮）',110,3.6],['全麦面包',246,9.0],['燕麦片',368,15.0],['玉米',112,2.9],['红薯',86,1.6],['小米粥',46,1.4]],
+'肉蛋类':[['鸡蛋',144,13.3],['鸡胸肉',118,24.6],['猪里脊',143,20.3],['牛肉',125,19.9],['草鱼',113,16.6],['虾',93,18.6],['五花肉',349,12.0]],
+'奶豆类':[['牛奶',54,3.0],['酸奶',72,2.5],['豆浆',31,3.0],['豆腐',82,8.1],['豆干',140,16.3]],
+'蔬菜':[['西兰花',36,3.6],['菠菜',28,2.6],['西红柿',20,0.9],['黄瓜',16,0.8],['胡萝卜',39,1.0],['土豆',81,2.6],['青椒',25,1.4]],
+'水果':[['苹果',53,0.2],['香蕉',93,1.4],['橙子',48,0.8],['梨',58,0.4],['葡萄',70,0.4],['猕猴桃',61,1.6]],
+'坚果油脂':[['花生',574,24.8],['核桃',654,14.9],['食用油',899,0]],
+'饮品零食':[['可乐',43,0],['橙汁',45,0.7],['薯片',548,4.0],['饼干',433,7.5]]};
+var FOODMAP={};Object.keys(FOODS).forEach(function(g){FOODS[g].forEach(function(f){FOODMAP[f[0]]={kcal:f[1],pro:f[2]};});});
+function renderDiet(){
+document.getElementById('foodList').innerHTML=Object.keys(FOODMAP).map(function(k){return '<option value="'+esc(k)+'">';}).join('');
+var date=document.getElementById('dietDate').value||today();
+var day=state.diet.filter(function(r){return r.date===date;});
+var kcal=0,pro=0;
+var byMeal={};day.forEach(function(r){kcal+=r.kcal;pro+=r.pro;if(!byMeal[r.meal])byMeal[r.meal]=[];byMeal[r.meal].push(r);});
+document.getElementById('dietDay').innerHTML='<div class="grid"><div class="stat"><b>'+Math.round(kcal)+' kcal</b><span>'+date+' 全天估算热量</span></div><div class="stat"><b>'+pro.toFixed(0)+' g</b><span>估算蛋白质</span></div></div>'+
+['早餐','午餐','晚餐','加餐'].map(function(m){if(!byMeal[m])return'';return '<h3>'+m+'</h3>'+byMeal[m].map(function(r){return '<span class="pill">'+esc(r.food)+' '+r.amt+'（'+Math.round(r.kcal)+' kcal）</span>';}).join('');}).join('');
+var sorted=state.diet.slice().sort(function(a,b){return a.date<b.date?1:-1;}).slice(0,60);
+document.getElementById('dietList').innerHTML=sorted.length?'<table><tr><th>日期</th><th>餐次</th><th>食物</th><th>热量</th><th></th></tr>'+sorted.map(function(r){return '<tr><td>'+r.date+'</td><td>'+r.meal+'</td><td>'+esc(r.food)+' '+r.amt+'</td><td>'+Math.round(r.kcal)+' kcal</td><td><button class="del" data-deldiet="'+r.id+'">删</button></td></tr>';}).join('')+'</table>':'<p class="sub">还没有记录。</p>';
+document.querySelectorAll('[data-deldiet]').forEach(function(b){b.onclick=function(){state.diet=state.diet.filter(function(r){return r.id!==b.dataset.deldiet;});save();renderAll();toast('已删除');};});}
+document.getElementById('dietDate').addEventListener('change',function(){renderDiet();renderAnti();});
+document.getElementById('btnAddDiet').onclick=function(){
+var food=document.getElementById('dietFood').value.trim(),amt=parseFloat(document.getElementById('dietAmt').value);
+if(!food||!amt){toast('请填写食物和数量');return;}
+var f=FOODMAP[food];var kcal=f?f.kcal*amt/100:0,pro=f?f.pro*amt/100:0;
+state.diet.push({id:uid(),date:document.getElementById('dietDate').value||today(),meal:document.getElementById('dietMeal').value,food:food,amt:amt,kcal:kcal,pro:pro});
+save();document.getElementById('dietFood').value='';document.getElementById('dietAmt').value='';renderAll();toast('已记一笔');};
+/* ---------- 体检全景 ---------- */
+var PANO=[['一般检查（身高体重血压）','bp',0],['内科','cat|专科检查',0],['外科','cat|专科检查',0],['眼科','cat|专科检查',0],['耳鼻喉科','cat|专科检查',0],['口腔科','cat|专科检查',0],
+['血常规','cat|血常规',0],['尿常规','cat|尿常规',0],['粪便常规+潜血','cat|粪便常规',0],['肝功能','cat|肝功能',0],['肾功能','cat|肾功能',0],['血脂','cat|血脂',0],['血糖/糖化血红蛋白','cat|血糖',0],
+['甲状腺功能','cat|甲状腺功能',0],['肿瘤标志物','cat|肿瘤标志物',1],['凝血功能','cat|凝血功能',1],['心肌酶','cat|心肌酶',1],['炎症指标','cat|炎症',0],['骨代谢/维生素D','cat|骨代谢',1],
+['心电图','cat|专科检查',0],['胸部影像（X线/CT）','cat|影像检查',0],['腹部超声','cat|影像检查',0],['颈动脉超声','cat|影像检查',1],['骨密度','cat|影像检查',1],['胃肠镜','cat|专科检查',1]];
+function panoStatus(item){
+var key=item[1];
+if(key==='bp'&&state.bps.length){var d=state.bps.map(function(r){return r.dt.slice(0,10);}).sort();return d[d.length-1];}
+if(key.indexOf('cat|')===0){var c=key.slice(4);var ds=state.labs.filter(function(r){return r.cat===c;}).map(function(r){return r.date;}).sort();if(ds.length)return ds[ds.length-1];}
+return null;}
+function renderPano(){
+document.getElementById('panoList').innerHTML='<table><tr><th>项目</th><th>状态</th><th>手动标记</th></tr>'+PANO.map(function(item,i){
+var auto=panoStatus(item),manual=state.checks['pano'+i];
+var status=auto?'<span class="pill">已录入 · '+auto+'</span>':(manual?'<span class="pill">已完成 · '+esc(manual)+'</span>':'<span class="pill '+(item[2]?'warn':'bad')+'">'+(item[2]?'按需评估':'未见记录')+'</span>');
+return '<tr><td>'+item[0]+'</td><td>'+status+'</td><td>'+(auto?'':(manual?'<button class="del" data-pano="'+i+'">取消</button>':'<button class="btn sec" style="padding:5px 10px;font-size:13px" data-pano="'+i+'">标已完成</button>'))+'</td></tr>';}).join('')+'</table>';
+document.querySelectorAll('[data-pano]').forEach(function(b){b.onclick=function(){var k='pano'+b.dataset.pano;
+if(state.checks[k]){askDialog('取消这项的「已完成」标记？',{},function(){delete state.checks[k];save();renderAll();});}
+else{askDialog('标记为已完成',{field:true,fieldLabel:'完成日期',fieldType:'date',fieldValue:today(),okText:'保存'},function(v){state.checks[k]=v||today();save();renderAll();toast('已标记');});}};});}
+/* ---------- 就诊一页纸 ---------- */
+var KEYLABS=['低密度脂蛋白胆固醇','总胆固醇','甘油三酯','高密度脂蛋白胆固醇','空腹血糖','糖化血红蛋白','尿酸','肌酐','谷丙转氨酶','谷草转氨酶','促甲状腺激素','血红蛋白','白细胞','血小板'];
+function renderVisit(){
+var p=state.profile,bmi=bmiOf(p),age=ageOf(p.birth);
+var latestBp=state.bps.slice().sort(function(a,b){return a.dt<b.dt?1:-1;})[0];
+var rows=KEYLABS.map(function(n){var recs=state.labs.filter(function(r){return r.name===n&&r.num!=null;}).sort(function(a,b){return a.date<b.date?1:-1;});
+if(!recs.length)return'';var r=recs[0];return '<tr><td>'+n+'</td><td class="'+(r.flag?'abn':'')+'">'+r.num+' '+(r.unit||'')+(r.flag?'（'+r.flag+'）':'')+'</td><td class="sub">'+r.date+'</td></tr>';}).join('');
+document.getElementById('visitBody').innerHTML=
+'<table><tr><th style="width:100px">姓名</th><td>'+esc(p.name||'未填')+'</td><th style="width:80px">性别/年龄</th><td>'+esc(p.gender||'')+(age!=null?' / '+age+' 岁':'')+'</td></tr>'+
+'<tr><th>身高/体重</th><td>'+(p.height||'-')+' cm / '+(p.weight||'-')+' kg</td><th>BMI</th><td>'+(bmi?bmi.toFixed(1):'-')+'</td></tr>'+
+'<tr><th>已诊断疾病</th><td colspan="3">'+esc(p.conditions||'无记录')+'</td></tr>'+
+'<tr><th>正在用药</th><td colspan="3">'+esc(p.meds||'无记录')+'</td></tr>'+
+'<tr><th>过敏史</th><td colspan="3">'+esc(p.allergies||'无记录')+'</td></tr>'+
+'<tr><th>家族史</th><td colspan="3">'+esc(p.family||'无记录')+'</td></tr>'+
+'<tr><th>最近血压</th><td colspan="3">'+(latestBp?latestBp.sys+'/'+latestBp.dia+' mmHg（'+esc(latestBp.dt.replace('T',' '))+'）':'暂无记录')+'</td></tr></table>'+
+'<h3>关键化验（每项最近一次）</h3>'+(rows?'<table><tr><th>项目</th><th>结果</th><th>日期</th></tr>'+rows+'</table>':'<p class="sub">暂无关键化验记录。</p>')+
+'<p class="sub" style="margin-top:8px">生成日期：'+today()+'。本页为个人记录汇总，不构成诊断。</p>';}
+/* ---------- 抗炎抗氧化清单 ---------- */
+var ANTI_ITEMS=[
+['fish','富脂鱼 / 鱼油','EPA、DHA','每周 2 次，每次 100–150g；没吃鱼时可考虑鱼油约 500mg/天'],
+['darkveg','深色蔬菜','叶黄素、萝卜硫素、类胡萝卜素','每天蔬菜约一半是深色，约 250g'],
+['berry','浆果','花青素','每天一小把，约 50–100g（蓝莓、草莓、桑葚等）'],
+['fruit','其他水果','维生素 C、植物多酚','每天 200–350g，如一个橙子或猕猴桃'],
+['beans','豆类豆制品','异黄酮、植物蛋白、纤维','每天一份：豆腐约 100g 或豆浆约 250ml'],
+['mushroom','菌菇','麦角硫因','每周 3–4 次，香菇、平菇、口蘑轮换'],
+['nuts','坚果种子','维生素 E、多酚','每天一小把，约 15g（核桃、巴旦木等）'],
+['wholegrain','全谷杂粮','β-葡聚糖、膳食纤维','主食掺约三分之一全谷，如燕麦约 40g'],
+['fermented','发酵食品','益生菌（调节肠道菌群）','每天一小份：无糖酸奶约 100g、泡菜、纳豆等'],
+['tea','绿茶或手冲咖啡','儿茶素 EGCG、绿原酸','绿茶 2–3 杯，或纸滤手冲咖啡 1–2 杯'],
+['oil','好油脂','油橄榄多酚、单不饱和脂肪','橄榄油、菜籽油优先；每天烹调油总量 25–30g 内']];
+function antiAutoFor(date){
+var out={};
+function hit(id,label){if(!out[id])out[id]=label;}
+state.diet.filter(function(r){return r.date===date;}).forEach(function(r){
+var f=r.food||'';
+if(/蓝莓|草莓|桑葚|蔓越莓|覆盆子|黑莓|黑枸杞/.test(f))hit('berry','来自饮食记录');
+else if(/苹果|香蕉|橙子|橙\b|梨|葡萄|猕猴桃|柚子|桃子|芒果|水果|柿子|枣/.test(f))hit('fruit','来自饮食记录');
+if(f.indexOf('鱼')>=0)hit('fish','已记鱼类');
+if(/菠菜|西兰花|胡萝卜|紫甘蓝|油菜|芥蓝|苋菜|空心菜|生菜|番茄|西红柿/.test(f))hit('darkveg','来自饮食记录');
+if(/豆腐|豆浆|豆干|豆皮|腐竹|黑豆|黄豆|鹰嘴豆|毛豆/.test(f))hit('beans','来自饮食记录');
+if(/菇|蘑|木耳|银耳/.test(f))hit('mushroom','来自饮食记录');
+if(/核桃|花生|巴旦木|杏仁|腰果|榛子|坚果|亚麻籽|芝麻|葵花籽|南瓜籽/.test(f))hit('nuts','来自饮食记录');
+if(/燕麦|全麦|糙米|杂粮|小米粥|玉米|藜麦|荞麦/.test(f))hit('wholegrain','来自饮食记录');
+if(/酸奶|泡菜|纳豆|味噌/.test(f))hit('fermented','来自饮食记录');
+if(/绿茶|乌龙茶|手冲|挂耳|咖啡/.test(f))hit('tea','来自饮食记录');
+if(/橄榄油/.test(f))hit('oil','来自饮食记录');});
+return out;}
+function antiEffective(date){
+var auto=antiAutoFor(date),rec=state.anti[date],manual=(rec&&rec.manual)||{},out={};
+ANTI_ITEMS.forEach(function(it){var id=it[0];
+if(Object.prototype.hasOwnProperty.call(manual,id))out[id]={on:!!manual[id],src:'manual'};
+else if(auto[id])out[id]={on:true,src:'auto',label:auto[id]};
+else out[id]={on:false,src:'none'};});
+return out;}
+var ANTI_SHORT={fish:'富脂鱼',darkveg:'深色蔬菜',berry:'浆果',fruit:'水果',beans:'豆类',mushroom:'菌菇',nuts:'坚果',wholegrain:'全谷',fermented:'发酵食品',tea:'茶/咖啡',oil:'好油脂'};
+function shiftDate(ds,delta){var d=new Date(ds+'T12:00:00');d.setDate(d.getDate()+delta);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function renderAnti(){
+var date=document.getElementById('dietDate').value||today();
+var eff=antiEffective(date),done=ANTI_ITEMS.filter(function(it){return eff[it[0]].on;}).length;
+document.getElementById('antiHead').innerHTML='<div class="stat"><b>'+done+' / 11</b><span>'+date+' 今日进度（跟着饮食简记的日期走）</span></div>';
+document.getElementById('antiList').innerHTML=ANTI_ITEMS.map(function(it){
+var e=eff[it[0]];
+return '<button type="button" class="antirow'+(e.on?' on':'')+'" data-anti="'+it[0]+'"><span class="box">'+(e.on?'✓':'')+'</span><span><span class="nm">'+it[1]+'</span> <span class="sub">'+it[2]+'</span>'+(e.on&&e.src==='auto'?' <span class="autotag">'+esc(e.label||'来自饮食记录')+'</span>':'')+'<br><span class="sub">'+it[3]+'</span></span></button>';}).join('');
+document.querySelectorAll('[data-anti]').forEach(function(b){b.onclick=function(){
+var id=b.dataset.anti,cur=antiEffective(date)[id],auto=antiAutoFor(date);
+if(!state.anti[date])state.anti[date]={manual:{}};
+if(!state.anti[date].manual)state.anti[date].manual={};
+var nv=!cur.on;
+if(auto[id]&&nv)delete state.anti[date].manual[id];
+else if(!auto[id]&&!nv)delete state.anti[date].manual[id];
+else state.anti[date].manual[id]=nv;
+save();renderAnti();};});
+var days=[];for(var i=6;i>=0;i--)days.push(shiftDate(date,-i));
+var effs=days.map(function(d){return antiEffective(d);});
+var wk=['日','一','二','三','四','五','六'];
+var head='<tr><th>项目</th>'+days.map(function(d){var dt=new Date(d+'T12:00:00');return '<th>'+(dt.getMonth()+1)+'/'+dt.getDate()+'<br>周'+wk[dt.getDay()]+'</th>';}).join('')+'<th>合计</th></tr>';
+var rows=ANTI_ITEMS.map(function(it){
+var cnt=effs.filter(function(e){return e[it[0]].on;}).length;
+return '<tr><td>'+(ANTI_SHORT[it[0]]||it[1])+'</td>'+effs.map(function(e){return '<td class="'+(e[it[0]].on?'dot-on':'dot-off')+'">'+(e[it[0]].on?'●':'○')+'</td>';}).join('')+'<td>'+cnt+'/7天</td></tr>';}).join('');
+document.getElementById('antiMatrix').innerHTML='<table class="mxtable">'+head+rows+'</table><p class="sub" style="margin-top:4px">圆点为当天已达成（含饮食自动勾与手动勾）。看一周的整体结构，单日缺项不扣分。</p>';}
+/* ---------- 营养百科 ---------- */
+function seedWiki(){return [
+{id:'wk-seed-1',title:'抗炎抗氧化食物清单（完整版）',cat:'抗炎抗氧化',source:'Muse整理',body:'抗炎、抗氧化靠的是长期饮食结构，不是某几种“超级食物”。下面按活性成分整理，都是普通市场能买到的食物。\n【抗炎主力】\n· 富脂鱼（EPA/DHA）：三文鱼、青花鱼（鲭鱼）、秋刀鱼、沙丁鱼，每周 2 次、每次 100–150g。\n· 特级初榨橄榄油（油橄榄多酚）：凉拌、淋菜，每天 1–2 汤匙，顶替部分炒菜油。\n· 姜黄、生姜、大蒜：姜黄做菜时配一点黑胡椒和油脂，吸收更好；蒜切碎静置约 10 分钟再下锅。\n· 发酵食品（调节肠道菌群）：无糖酸奶、泡菜、纳豆、味噌，每天一小份。\n· 绿茶（儿茶素 EGCG）：每天 2–3 杯，水温约 85℃，别用滚水久泡。\n【抗氧化主力】\n· 浆果（花青素）：蓝莓、草莓、桑葚，每天一小把约 50–100g；冷冻蓝莓营养不输鲜果。\n· 深色蔬菜（类胡萝卜素、叶黄素、萝卜硫素）：菠菜、西兰花、胡萝卜、紫甘蓝，每天蔬菜至少一半是深色；西兰花切开静置一会儿再下锅、别久煮。\n· 番茄（番茄红素）：熟吃加油吸收率明显高于生吃，如番茄炒蛋、番茄炖菜。\n· 柑橘和猕猴桃（维生素 C）：每天一个橙子或一个猕猴桃，就能覆盖一天维 C 的大头。\n· 坚果种子（维生素 E、多酚）：核桃、巴旦木每天一小把约 15g；亚麻籽磨粉撒在粥或酸奶上。\n· 豆类（异黄酮、植物多酚）：豆腐、豆浆、黑豆、鹰嘴豆，每天一份，同时补蛋白和纤维。\n· 菌菇（麦角硫因，人体不能自己合成）：香菇、平菇、口蘑，每周 3–4 次。\n· 可可（黄烷醇）：选 85% 以上黑巧，每天 10–20g；普通牛奶巧克力糖多于可可，不算。\n· 纸滤手冲咖啡（绿原酸）：多酚保留较好，咖啡醇又低（见《咖啡与胆固醇》一篇）。\n【促炎的一头，少吃】\n含糖饮料和果汁、油炸食品、加工肉（香肠、午餐肉、培根）、精制糖糕点、过量酒精、反复高温煎炸的油。\n【落地三原则】\n1. 彩虹原则：每天吃到 4–5 种颜色的蔬果，抗氧化谱系自然就全。\n2. 每餐结构：一掌蛋白（鱼/豆/蛋/瘦肉轮换）+ 两拳蔬菜（深色占一半）+ 一拳主食（掺约三分之一全谷）。\n3. 看一周而不是一天：哪一类总是缺，优先补哪一类；多数人常缺的是浆果、菌菇和豆类。\n小提示：高尿酸或痛风人群吃鱼要挑种类，沙丁鱼、凤尾鱼嘌呤很高，宜少吃，具体结合医生建议。'},
+{id:'wk-seed-2',title:'EPA 与 DHA 怎么获取',cat:'脂肪酸',source:'Muse整理',body:'获取 EPA 和 DHA 有三条路，含金量差别很大。\n【方法 1：吃富脂鱼——最靠谱】\n关键是吃对鱼，含量可差出十倍（每 100g 可食部，约数）：\n· 第一梯队（约 2g）：青花鱼/鲭鱼、秋刀鱼、三文鱼、沙丁鱼，吃一次 100–150g 就有约 2–3g。\n· 第二梯队（约 0.5–1g）：带鱼、黄花鱼、海鲈。\n· 指望不上：鳕鱼、龙利鱼、巴沙鱼和多数淡水鱼，主要是优质蛋白，EPA/DHA 很少。\n执行标准：膳食指南建议每周吃鱼 300–525g；换成第一梯队的鱼每周 2 次、每次一掌大小，平均每天约 500mg EPA+DHA，达到各国指南每天 250–500mg 的通用推荐量。做法选清蒸、烤、少油煎，避免高温油炸。沙丁鱼罐头便宜、含量高、汞低；金枪鱼汞含量相对高，一周一次以内。\n【方法 2：亚麻籽油/紫苏油——不能替代鱼】\n其中的 α-亚麻酸（ALA）在体内转 EPA 的效率只有约 5%–10%，转 DHA 更低、不到 1%–4%。它们本身是好的脂肪酸来源，但替代不了鱼和鱼油，尤其是 DHA。注意：这类油怕热，只能凉拌或出锅后淋，不要拿来炒菜。\n【方法 3：鱼油补充剂——吃不够鱼时的替补】\n· 看标签上 EPA+DHA 的实际含量，不是“鱼油 1000mg”：不少产品一粒 1000mg 鱼油里 EPA+DHA 只有约 300mg，选浓度 60% 以上的。\n· 选有第三方检测的产品（如 IFOS 五星标识），随餐吃吸收更好，也不容易反鱼腥味。\n· 素食者选藻油（直接含 DHA，部分含 EPA）。\n【剂量提醒】\n以膳食量为目标：每天 EPA+DHA 合计约 500–1000mg（吃鱼的日子不用再补）。每天 3–4g 那种是降甘油三酯的处方量范畴，要由医生决定，不要自行大剂量服用；含 DHA 的鱼油大剂量时可能让 LDL 小幅上升，血脂偏高者更要控制剂量。'},
+{id:'wk-seed-3',title:'咖啡与胆固醇：关键在冲法，不在咖啡因',cat:'饮品',source:'Muse整理',body:'升 LDL 的不是咖啡因，而是咖啡豆油脂里的咖啡醇（cafestol）。\n【机制】\n咖啡醇和 kahweol 是咖啡油中的二萜类成分，会抑制肝脏清除 LDL，是已知较强的膳食升胆固醇成分。试验证明咖啡因本身不升 LDL，未过滤的低因咖啡照样升，所以关键在冲煮方式，不在提不提神。\n【不同冲法，每杯咖啡醇约数】\n· 纸滤滴滤 / 纸滤手冲：约 0.1mg，基本可忽略——纸滤能去掉 95% 以上的咖啡醇，挂耳包也是纸滤。\n· 意式浓缩（含美式）：约 1.2mg，属中间档；意式机用金属粉碗，拦不住咖啡醇，大杯常是双份浓缩，累积量更高。\n· 法压壶、煮咖啡、金属滤网手冲：约 4mg，放行最多。\n【实际影响有多大】\n研究里未过滤咖啡在常规饮用量下平均升 LDL 约 5–10 mg/dL（约 0.13–0.26 mmol/L），重度饮用才更高。它通常只是多因素之一，血脂还受饱和脂肪、整体饮食、季节和个体波动影响，不能把变化全归因于咖啡。换成纸滤冲法后，一般几周到几个月能看到回落趋势。\n【实操】\n1. 想喝又在意 LDL：优先纸滤手冲、挂耳、滴滤机。\n2. 金属滤网手冲和法压壶等同未过滤，偶尔喝可以，别天天大量喝。\n3. 量血压前半小时别喝咖啡，咖啡因会让读数短时升高；要喝先量完再喝，或在血压记录的备注里标一下。'},
+{id:'wk-seed-4',title:'降低 LDL-C 的生活方式杠杆',cat:'血脂',source:'Muse整理',body:'以下按《中国血脂管理指南（2023年）》的一般口径汇总。是否需要药物、目标定多少，要由医生结合整体风险分层决定；一般低危人群 LDL-C 目标常参考 <3.4 mmol/L。\n【1. 脂肪换血（效果最大，约降 5–10%）】\n少吃饱和脂肪：肥肉、五花、动物内脏、油炸食品、奶油糕点、黄油、加工肉。换成不饱和脂肪：炒菜油可选菜籽油、橄榄油，总量仍控制在每天约 25–30g（约 3 汤匙）。每周吃 2 次富脂鱼；全脂奶可换低脂奶。\n【2. 可溶性膳食纤维】\n燕麦 β-葡聚糖每天约 3g，可降 LDL 约 0.2–0.3 mmol/L。每天一份燕麦（约 40g 干重）当早餐最容易坚持；再加豆制品每天一份、蔬菜约 500g、水果 200–350g，纤维和大豆蛋白都有温和的降 LDL 作用。\n【3. 植物甾醇】\n每天约 2g 可降约 8–10%。天然来源是坚果、豆类、植物油，量不够时也有强化甾醇的食品；属膳食补充性质，用不用可以咨询医生。\n【4. 运动】\n对 LDL 直接作用不大，但改善整体代谢：每周至少 150 分钟中等强度有氧，再加每周 2 次抗阻训练。\n【5. 酒精】\n限量。酒精主要推高甘油三酯，对总胆固醇偏高也没有好处。\n【节奏与复查】\n生活方式干预一般 3 个月看效果，再复查血脂全套对比。如果认真执行 3–6 个月后 LDL 仍明显高于目标，或重新大幅升高，需要医生评估是否药物干预，不要自行买药。\n【特殊人群提示】\n体重过低、消瘦的人不要靠少吃、减重来降 LDL，打法是“换脂肪、加纤维”，不是“减总量”，同时保证蛋白质和总能量摄入。'},
+{id:'wk-seed-5',title:'复合维生素怎么看、怎么挑',cat:'补充剂',source:'Muse整理',body:'复合维生素的定位是“吃饭不规律那天的保险”，不降血脂、不降尿酸；对具体指标有目标时，要靠饮食、复查和医生方案。挑选时看这几点：\n【1. 先看形态，再看剂量】\n· 叶酸：活性形态（5-MTHF）优于普通叶酸（folic acid）。\n· 维生素 B12：甲基钴胺（methylcobalamin）优于氰钴胺。\n· 矿物质：螯合型（如甘氨酸镁、柠檬酸钙）通常吸收优于氧化镁、碳酸钙这类廉价形态。\n· 维生素 K：带 K2（MK-7）的配方更完整，与维生素 D 协同。\n【2. 维生素 D 是多数人最实际的一项】\n久坐室内、日晒少的人不足概率不低。复合维生素里常见的 1000 IU 是维持剂量；如果检测 25-羟维生素D 提示真缺乏，纠正剂量要按结果单独定，复合片替代不了检测。建议抽血时顺手加测这一项。\n【3. 男士配方通常不含铁，这是对的】\n成年男性一般不缺铁，无指征补铁反而增加负担。女性、素食者等人群需求不同，要结合自身化验看。\n【4. 警惕“凑数成分”】\n· 钙只给一两百毫克（且是碳酸钙）时，指望它补钙不现实；每天约 800mg 的目标主要靠奶和豆制品。\n· 氧化镁吸收率差，含量好看、实际利用有限。\n· 番茄红素只给几百微克多为营销：吃一个番茄就有约 3mg，是这类低剂量的许多倍。\n· B 族给到 200% 以上多为水溶性，超量随尿排出，除了尿变黄没有额外收益，一般也谈不上风险。\n【5. 吃法】\n随餐吃（脂溶性的 A/D/E/K 要靠食物里的油脂吸收），早上随早餐较方便；与浓茶、咖啡错开约半小时，以免干扰部分矿物质吸收。吃之前看一眼保质期。\n【6. 别和单项补充剂叠加超量】\n如果另服维生素 D 等单项产品，要把复合片里的含量加总一起算总量，避免长期超上限；剂量拿不准时先检测、再决定。'},
+{id:'wk-seed-6',title:'脂肪酸家族图谱',cat:'脂肪酸',source:'Muse整理',body:'脂肪酸先分两大类：常温下凝固的是饱和脂肪酸（多来自动物脂肪、黄油等）；常温下为液体的是不饱和脂肪酸。不饱和再分单不饱和（ω-9，如橄榄油的油酸）和多元不饱和。\n【多元不饱和的两条线】\n· ω-3 线：α-亚麻酸（ALA，来自亚麻籽油、紫苏油）→ EPA（二十碳五烯酸）→ DHA。EPA/DHA 主要直接来自富脂鱼和鱼油；ALA 的转化率很低（见《EPA 与 DHA 怎么获取》）。ω-3 衍生的介质总体偏向抑制炎症。\n· ω-6 线：亚油酸（来自大豆油、玉米油、葵花籽油等）→ AA（花生四烯酸）。AA 的部分衍生介质参与促进炎症反应。\n【关于 ω-6，要说句公道话】\n把 ω-6 说成纯粹的“促炎坏人”是简化了：亚油酸在人体试验里并不升高炎症指标，平时的大豆油、葵花籽油正常吃不用怕。更可行的策略是把 ω-3 补上来（多吃富脂鱼、用一部分橄榄油、菜籽油），而不是极端戒掉 ω-6。\n【一句话记忆】\n饱和少一点，单不饱和（橄榄油）多一点，ω-3 补够，ω-6 正常吃——结构比单个成分重要。'}];}
+var wikiFilter='全部',wikiEditId=null,wikiOpenId=null;
+var WIKI_FILTERS=['全部','抗炎抗氧化','血脂','脂肪酸','补充剂','饮品','我的记录'];
+function wikiBodyHTML(body){
+return String(body||'').split('\n').map(function(line){
+var t=line.trim();
+if(!t)return '<div style="height:6px"></div>';
+if(t.charAt(0)==='【')return '<div class="wh">'+esc(t)+'</div>';
+return '<div>'+esc(t)+'</div>';}).join('');}
+function renderWiki(){
+document.getElementById('wikiChips').innerHTML=WIKI_FILTERS.map(function(c){
+return '<button type="button" class="fchip'+(wikiFilter===c?' on':'')+'" data-wf="'+c+'">'+c+'</button>';}).join('');
+document.querySelectorAll('[data-wf]').forEach(function(b){b.onclick=function(){wikiFilter=b.dataset.wf;renderWiki();};});
+renderWikiList();}
+function renderWikiList(){
+var q=(document.getElementById('wikiSearch').value||'').trim();
+var list=state.wiki.filter(function(w){
+if(wikiFilter==='我的记录'){if(w.source!=='我的记录')return false;}
+else if(wikiFilter!=='全部'&&w.cat!==wikiFilter)return false;
+if(q&&(w.title+' '+w.body).indexOf(q)<0)return false;
+return true;});
+var box=document.getElementById('wikiList');
+if(!list.length){box.innerHTML='<div class="card"><p class="sub">没有符合条件的条目。换个关键词，或在上方新增一条。</p></div>';return;}
+box.innerHTML=list.map(function(w){
+var open=wikiOpenId===w.id;
+var excerpt=(w.body||'').replace(/\s+/g,' ').slice(0,90);
+return '<div class="card"><div><b style="font-size:15.5px">'+esc(w.title)+'</b></div>'+
+'<div style="margin:5px 0"><span class="pill">'+esc(w.cat)+'</span><span class="pill '+(w.source==='我的记录'?'warn':'')+'">'+esc(w.source)+'</span></div>'+
+(open?'<div class="wkbody">'+wikiBodyHTML(w.body)+'</div>':'<p class="sub">'+esc(excerpt)+'…</p>')+
+'<div style="margin-top:8px"><button class="btn sec" style="padding:6px 12px;font-size:13.5px" data-wopen="'+w.id+'">'+(open?'收起':'查看全文')+'</button> '+
+'<button class="btn sec" style="padding:6px 12px;font-size:13.5px" data-wedit="'+w.id+'">编辑</button> '+
+'<button class="del" data-wdel="'+w.id+'">删除</button></div></div>';}).join('');
+box.querySelectorAll('[data-wopen]').forEach(function(b){b.onclick=function(){wikiOpenId=wikiOpenId===b.dataset.wopen?null:b.dataset.wopen;renderWikiList();};});
+box.querySelectorAll('[data-wedit]').forEach(function(b){b.onclick=function(){
+var w=state.wiki.filter(function(x){return x.id===b.dataset.wedit;})[0];if(!w)return;
+wikiEditId=w.id;
+document.getElementById('wikiFormTitle').textContent='编辑条目';
+document.getElementById('wkTitle').value=w.title;
+document.getElementById('wkCat').value=w.cat;
+document.getElementById('wkBody').value=w.body;
+document.getElementById('btnCancelWiki').style.display='';
+document.getElementById('wkTitle').scrollIntoView({behavior:'smooth',block:'center'});};});
+box.querySelectorAll('[data-wdel]').forEach(function(b){b.onclick=function(){
+askDialog('删除这篇百科条目？',{},function(){state.wiki=state.wiki.filter(function(x){return x.id!==b.dataset.wdel;});if(wikiOpenId===b.dataset.wdel)wikiOpenId=null;save();renderWiki();renderHome();toast('已删除');});};});}
+document.getElementById('wikiSearch').addEventListener('input',renderWikiList);
+document.getElementById('btnSaveWiki').onclick=function(){
+var title=document.getElementById('wkTitle').value.trim(),body=document.getElementById('wkBody').value.trim(),cat=document.getElementById('wkCat').value;
+if(!title){toast('标题不能为空');return;}
+if(!body){toast('正文不能为空');return;}
+if(wikiEditId){var w=state.wiki.filter(function(x){return x.id===wikiEditId;})[0];if(w){w.title=title;w.cat=cat;w.body=body;}}
+else state.wiki.unshift({id:uid(),title:title,cat:cat,source:'我的记录',body:body});
+wikiEditId=null;
+document.getElementById('wikiFormTitle').textContent='新增条目';
+document.getElementById('wkTitle').value='';document.getElementById('wkBody').value='';
+document.getElementById('btnCancelWiki').style.display='none';
+save();renderWiki();renderHome();toast('百科条目已保存');};
+document.getElementById('btnCancelWiki').onclick=function(){
+wikiEditId=null;document.getElementById('wikiFormTitle').textContent='新增条目';
+document.getElementById('wkTitle').value='';document.getElementById('wkBody').value='';
+document.getElementById('btnCancelWiki').style.display='none';};
+/* ---------- 健康认知 ---------- */
+var insEditId=null;
+function insStatusPill(s){
+if(s==='检查已证实')return '<span class="pill ok">检查已证实</span>';
+if(s==='医生已确认')return '<span class="pill">医生已确认</span>';
+return '<span class="pill warn">个人推测·未验证</span>';}
+function legacyEntries(){return state.insights.filter(function(r){return r.hereditary;});}
+function legacySheetHTML(){
+var p=state.profile,bmi=bmiOf(p),age=ageOf(p.birth),hered=legacyEntries();
+var basic='<table><tr><th style="width:100px">姓名</th><td>'+esc(p.name||'未填')+'</td><th style="width:90px">性别 / 年龄</th><td>'+esc(p.gender||'')+(age!=null?' / '+age+' 岁':'')+'</td></tr>'+
+'<tr><th>身高 / 体重</th><td colspan="3">'+(p.height||'-')+' cm / '+(p.weight||'-')+' kg'+(bmi?'（BMI '+bmi.toFixed(1)+'）':'')+'</td></tr>'+
+'<tr><th>已诊断疾病</th><td colspan="3">'+esc(p.conditions||'无记录')+'</td></tr></table>';
+var heredHTML=hered.length?hered.map(function(r){
+return '<div style="margin-bottom:10px"><b>'+esc(r.title)+'</b> '+insStatusPill(r.status)+
+(r.obs?'<br><span class="sub">观察：</span>'+esc(r.obs):'')+
+(r.idea?'<br><span class="sub">理解：</span>'+esc(r.idea):'')+
+(r.next?'<br><span class="sub">建议 / 下一步：</span>'+esc(r.next):'')+'</div>';}).join(''):'<p class="sub">暂无标记为「遗传相关」的条目。</p>';
+var advice=hered.length?'<ul style="padding-left:18px">'+hered.map(function(r){return '<li>'+esc(r.title)+(r.next?'：'+esc(r.next):'')+'</li>';}).join('')+'<li>把本页提到的筛查时间点提前告诉子女，并结合他们自己的医生建议执行。</li></ul>':'<p class="sub">暂无。有遗传相关条目后，这里会自动生成给子女的建议清单。</p>';
+return '<h2 style="font-size:17px;margin-bottom:8px">给子女的健康提示</h2>'+
+'<h3>基本情况</h3>'+basic+
+'<h3>有家族 / 遗传相关的问题</h3>'+heredHTML+
+'<h3>给子女的建议</h3>'+advice+
+'<h3>家族史补充</h3><p>'+(state.legacyFamily?esc(state.legacyFamily).replace(/\n/g,'<br>'):'<span class="sub">暂无补充。</span>')+'</p>'+
+'<p class="sub" style="margin-top:10px">生成日期：'+today()+'。本页由个人健康记录整理而成，仅供家人了解家族健康背景，不构成医疗建议；筛查与诊疗请咨询医生。</p>';}
+function renderMind(){
+var hered=legacyEntries();
+document.getElementById('legacyList').innerHTML=hered.length?hered.map(function(r){
+return '<div style="margin-bottom:8px"><b>'+esc(r.title)+'</b> '+insStatusPill(r.status)+(r.next?'<br><span class="sub">下一步：'+esc(r.next)+'</span>':'')+'</div>';}).join(''):'<p class="sub">暂无遗传相关条目。在下方记录认知时，把「与遗传相关」选为「是」，就会汇总到这里。</p>';
+document.getElementById('legacyFamilyText').value=state.legacyFamily||'';
+document.getElementById('legacyPrint').innerHTML=legacySheetHTML();
+var pv=document.getElementById('legacyPreview');
+if(pv.style.display!=='none')pv.innerHTML='<div class="card" style="margin:0">'+legacySheetHTML()+'</div>';
+var box=document.getElementById('insList');
+if(!state.insights.length){box.innerHTML='<p class="sub">把你对自己身体的观察和理解记在这里，建议标注可信程度（是个人推测、医生已确认，还是检查已证实），慢慢积累。带遗传因素的记得标上「遗传相关」，会进入上方传承卡，留给子女做未来的健康规划。</p>';}
+else box.innerHTML=state.insights.map(function(r){
+return '<div style="border-bottom:1px solid var(--line);padding:9px 0"><b>'+esc(r.title)+'</b> '+insStatusPill(r.status)+(r.hereditary?'<span class="pill bad">遗传相关</span>':'')+
+(r.obs?'<br><span class="sub">观察：</span>'+esc(r.obs).replace(/\n/g,'<br>'):'')+
+(r.idea?'<br><span class="sub">我的理解：</span>'+esc(r.idea).replace(/\n/g,'<br>'):'')+
+(r.next?'<br><span class="sub">依据 / 下一步：</span>'+esc(r.next):'')+
+'<br><span class="sub">'+esc(r.date||'')+'</span> <button class="btn sec" style="padding:4px 10px;font-size:13px" data-iedit="'+r.id+'">编辑</button> <button class="del" data-idel="'+r.id+'">删除</button></div>';}).join('');
+box.querySelectorAll('[data-iedit]').forEach(function(b){b.onclick=function(){
+var r=state.insights.filter(function(x){return x.id===b.dataset.iedit;})[0];if(!r)return;
+insEditId=r.id;
+document.getElementById('insFormTitle').textContent='编辑这条认知';
+document.getElementById('insTitle').value=r.title;
+document.getElementById('insObs').value=r.obs||'';
+document.getElementById('insIdea').value=r.idea||'';
+document.getElementById('insStatus').value=r.status;
+document.getElementById('insHered').value=r.hereditary?'1':'';
+document.getElementById('insNext').value=r.next||'';
+document.getElementById('btnCancelIns').style.display='';
+document.getElementById('insTitle').scrollIntoView({behavior:'smooth',block:'center'});};});
+box.querySelectorAll('[data-idel]').forEach(function(b){b.onclick=function(){
+askDialog('删除这条认知？',{},function(){state.insights=state.insights.filter(function(x){return x.id!==b.dataset.idel;});save();renderMind();renderHome();toast('已删除');});};});}
+document.getElementById('btnSaveLegacyFamily').onclick=function(){
+state.legacyFamily=document.getElementById('legacyFamilyText').value.trim();
+save();renderMind();toast('家族史补充已保存');};
+document.getElementById('btnLegacyPreview').onclick=function(){
+var pv=document.getElementById('legacyPreview'),open=pv.style.display!=='none';
+if(open){pv.style.display='none';document.body.classList.remove('printing-legacy');this.textContent='预览《给子女的健康提示》';}
+else{document.getElementById('legacyPrint').innerHTML=legacySheetHTML();pv.innerHTML='<div class="card" style="margin:0">'+legacySheetHTML()+'</div>';pv.style.display='block';document.body.classList.add('printing-legacy');this.textContent='收起预览';toast('已生成预览，可截图保存，或用浏览器菜单打印这一页');}};
+document.getElementById('btnSaveIns').onclick=function(){
+var title=document.getElementById('insTitle').value.trim();
+if(!title){toast('先写个标题概括这条认知');return;}
+var data={title:title,obs:document.getElementById('insObs').value.trim(),idea:document.getElementById('insIdea').value.trim(),status:document.getElementById('insStatus').value,hereditary:document.getElementById('insHered').value==='1',next:document.getElementById('insNext').value.trim()};
+if(insEditId){var r=state.insights.filter(function(x){return x.id===insEditId;})[0];if(r){r.title=data.title;r.obs=data.obs;r.idea=data.idea;r.status=data.status;r.hereditary=data.hereditary;r.next=data.next;r.date=today();}}
+else{data.id=uid();data.date=today();state.insights.unshift(data);}
+insEditId=null;
+document.getElementById('insFormTitle').textContent='记一条健康认知';
+['insTitle','insObs','insIdea','insNext'].forEach(function(id){document.getElementById(id).value='';});
+document.getElementById('insStatus').value='个人推测·未验证';document.getElementById('insHered').value='';
+document.getElementById('btnCancelIns').style.display='none';
+save();renderMind();renderHome();toast('认知已保存');};
+document.getElementById('btnCancelIns').onclick=function(){
+insEditId=null;document.getElementById('insFormTitle').textContent='记一条健康认知';
+['insTitle','insObs','insIdea','insNext'].forEach(function(id){document.getElementById(id).value='';});
+document.getElementById('btnCancelIns').style.display='none';};
+/* ---------- 总览与备份 ---------- */
+function renderHome(){
+var bmi=bmiOf(state.profile);
+var lastLab=state.labs.length?state.labs.map(function(r){return r.date;}).sort().slice(-1)[0]:null;
+var abnCount=state.labs.filter(function(r){return r.flag;}).length;
+var missing=PANO.filter(function(it,i){return !panoStatus(it)&&!state.checks['pano'+i]&&!it[2];}).length;
+document.getElementById('homeStats').innerHTML=
+'<div class="stat"><b>'+state.labs.length+'</b><span>化验/检查记录</span></div>'+
+'<div class="stat"><b>'+state.bps.length+'</b><span>血压记录</span></div>'+
+'<div class="stat"><b>'+(lastLab||'—')+'</b><span>最近一次检查</span></div>'+
+'<div class="stat"><b>'+(bmi?bmi.toFixed(1):'—')+'</b><span>BMI</span></div>';
+var tips=[];
+if(abnCount)tips.push('<span class="pill bad">有 '+abnCount+' 条化验被标为偏高/偏低，请在「化验检查」里看趋势，复诊时带给医生</span>');
+if(missing)tips.push('<span class="pill warn">体检全景里有 '+missing+' 个常规项目未见记录</span>');
+if(!state.labs.length)tips.push('<span class="pill">先从录入最近一次体检报告开始</span>');
+document.getElementById('homeTips').innerHTML=tips.join('');
+document.getElementById('dataCounts').innerHTML='<span class="pill">化验 '+state.labs.length+' 条</span><span class="pill">血压 '+state.bps.length+' 条</span><span class="pill">饮食 '+state.diet.length+' 条</span><span class="pill">百科 '+(state.wiki?state.wiki.length:0)+' 篇</span><span class="pill">认知 '+state.insights.length+' 条</span>';}
+document.getElementById('btnExport').onclick=function(){
+var blob=new Blob([JSON.stringify(state,null,1)],{type:'application/json'});
+var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+a.download='健康档案备份-'+today().replace(/-/g,'')+'.json';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);toast('备份文件已生成，请保存好');};
+document.getElementById('btnImport').onclick=function(){
+var f=document.getElementById('importFile').files[0];if(!f){toast('先选择备份文件');return;}
+var rd=new FileReader();rd.onload=function(){try{var d=JSON.parse(rd.result);
+if(!d||!Array.isArray(d.labs)||!Array.isArray(d.bps))throw 0;
+askDialog('导入将覆盖当前全部数据，确定继续？',{okText:'覆盖导入'},function(){state=d;normalizeState();save();renderAll();toast('导入完成');});}catch(e){toast('这个文件不是有效的备份文件');}};
+rd.readAsText(f);};
+document.getElementById('btnWipe').onclick=function(){
+askDialog('确定清空全部数据？建议先导出备份。',{okText:'继续'},function(){
+askDialog('再确认一次：清空后无法恢复。',{okText:'清空全部'},function(){state={profile:{},labs:[],bps:[],diet:[],checks:{},anti:{},insights:[],legacyFamily:'',wiki:seedWiki(),wikiSeeded:true};wikiEditId=null;insEditId=null;save();renderAll();toast('已清空');});});};
+function renderAll(){renderProfile();renderHome();renderLabs();renderBp();renderDiet();renderAnti();renderWiki();renderMind();renderPano();renderVisit();}
+load();
+['pasteDate','mDate','dietDate'].forEach(function(id){document.getElementById(id).value=today();});
+renderAll();
+</script>
+</body>
+</html>

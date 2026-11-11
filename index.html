@@ -545,31 +545,35 @@ state.bps.push({id:uid(),dt:dt,sys:sys,dia:dia,pulse:parseInt(document.getElemen
 save();['bpSys','bpDia','bpPulse','bpNote'].forEach(function(id){document.getElementById(id).value='';});renderAll();toast('血压已保存');};
 /* ---------- 饮食 ---------- */
 var FOODS={'主食':[['米饭',116,2.6],['馒头',223,7.0],['面条（煮）',110,3.6],['全麦面包',246,9.0],['燕麦片',368,15.0],['玉米',112,2.9],['红薯',86,1.6],['小米粥',46,1.4]],
-'肉蛋类':[['鸡蛋',144,13.3],['鸡胸肉',118,24.6],['猪里脊',143,20.3],['牛肉',125,19.9],['草鱼',113,16.6],['虾',93,18.6],['五花肉',349,12.0]],
+'肉蛋类':[['鸡蛋',144,13.3],['鸡胸肉',118,24.6],['猪里脊',143,20.3],['牛肉',125,19.9],['草鱼',113,16.6],['三文鱼',208,20.4],['虾',93,18.6],['五花肉',349,12.0]],
 '奶豆类':[['牛奶',54,3.0],['酸奶',72,2.5],['豆浆',31,3.0],['豆腐',82,8.1],['豆干',140,16.3]],
 '蔬菜':[['西兰花',36,3.6],['菠菜',28,2.6],['西红柿',20,0.9],['黄瓜',16,0.8],['胡萝卜',39,1.0],['土豆',81,2.6],['青椒',25,1.4]],
 '水果':[['苹果',53,0.2],['香蕉',93,1.4],['橙子',48,0.8],['梨',58,0.4],['葡萄',70,0.4],['猕猴桃',61,1.6]],
 '坚果油脂':[['花生',574,24.8],['核桃',654,14.9],['食用油',899,0]],
 '饮品零食':[['可乐',43,0],['橙汁',45,0.7],['薯片',548,4.0],['饼干',433,7.5]]};
 var FOODMAP={};Object.keys(FOODS).forEach(function(g){FOODS[g].forEach(function(f){FOODMAP[f[0]]={kcal:f[1],pro:f[2]};});});
+var FOOD_ALIAS={'鲑鱼':'三文鱼','大西洋鲑':'三文鱼','三文鱼片':'三文鱼','烤三文鱼':'三文鱼','煎三文鱼':'三文鱼','生三文鱼':'三文鱼','清蒸三文鱼':'三文鱼'};
+function findFood(name){if(!name)return null;var n=String(name).trim();if(!n)return null;if(FOODMAP[n])return FOODMAP[n];if(FOOD_ALIAS[n]&&FOODMAP[FOOD_ALIAS[n]])return FOODMAP[FOOD_ALIAS[n]];var keys=Object.keys(FOODMAP).concat(Object.keys(FOOD_ALIAS));keys.sort(function(a,b){return b.length-a.length;});for(var i=0;i<keys.length;i++){var k=keys[i];if(n.indexOf(k)>=0)return FOODMAP[k]||FOODMAP[FOOD_ALIAS[k]]||null;}for(var j=0;j<keys.length;j++){var k2=keys[j];if(n.length>=2&&k2.indexOf(n)>=0)return FOODMAP[k2]||FOODMAP[FOOD_ALIAS[k2]]||null;}return null;}
+function dietCalc(r){var f=findFood(r.food);if(!f||f.kcal==null||f.kcal===''||isNaN(f.kcal))return{kcal:null,pro:null,est:false};var amt=parseFloat(r.amt)||0;return{kcal:f.kcal*amt/100,pro:(f.pro==null||f.pro===''?0:f.pro)*amt/100,est:true};}
+function kcalText(r){var c=dietCalc(r);return c.est?Math.round(c.kcal)+' kcal':'未估算';}
 function renderDiet(){
 document.getElementById('foodList').innerHTML=Object.keys(FOODMAP).map(function(k){return '<option value="'+esc(k)+'">';}).join('');
 var date=document.getElementById('dietDate').value||today();
 var day=state.diet.filter(function(r){return r.date===date;});
-var kcal=0,pro=0;
-var byMeal={};day.forEach(function(r){kcal+=r.kcal;pro+=r.pro;if(!byMeal[r.meal])byMeal[r.meal]=[];byMeal[r.meal].push(r);});
-document.getElementById('dietDay').innerHTML='<div class="grid"><div class="stat"><b>'+Math.round(kcal)+' kcal</b><span>'+date+' 全天估算热量</span></div><div class="stat"><b>'+pro.toFixed(0)+' g</b><span>估算蛋白质</span></div></div>'+
-['早餐','午餐','晚餐','加餐'].map(function(m){if(!byMeal[m])return'';return '<h3>'+m+'</h3>'+byMeal[m].map(function(r){return '<span class="pill">'+esc(r.food)+' '+r.amt+'（'+Math.round(r.kcal)+' kcal）</span>';}).join('');}).join('');
+var kcal=0,pro=0,unest=0;
+var byMeal={};day.forEach(function(r){var c=dietCalc(r);if(c.est){kcal+=c.kcal;pro+=c.pro;}else{unest++;}if(!byMeal[r.meal])byMeal[r.meal]=[];byMeal[r.meal].push(r);});
+document.getElementById('dietDay').innerHTML='<div class="grid"><div class="stat"><b>'+Math.round(kcal)+' kcal</b><span>'+date+' 全天估算热量</span></div><div class="stat"><b>'+pro.toFixed(0)+' g</b><span>估算蛋白质</span></div></div>'+(unest?'<p class="sub" style="margin-top:6px">当日有 '+unest+' 条未估算记录，未计入总热量与蛋白质。</p>':'')+
+['早餐','午餐','晚餐','加餐'].map(function(m){if(!byMeal[m])return'';return '<h3>'+m+'</h3>'+byMeal[m].map(function(r){return '<span class="pill">'+esc(r.food)+' '+r.amt+'（'+kcalText(r)+'）</span>';}).join('');}).join('');
 var sorted=state.diet.slice().sort(function(a,b){return a.date<b.date?1:-1;}).slice(0,60);
-document.getElementById('dietList').innerHTML=sorted.length?'<table><tr><th>日期</th><th>餐次</th><th>食物</th><th>热量</th><th></th></tr>'+sorted.map(function(r){return '<tr><td>'+r.date+'</td><td>'+r.meal+'</td><td>'+esc(r.food)+' '+r.amt+'</td><td>'+Math.round(r.kcal)+' kcal</td><td><button class="del" data-deldiet="'+r.id+'">删</button></td></tr>';}).join('')+'</table>':'<p class="sub">还没有记录。</p>';
+document.getElementById('dietList').innerHTML=sorted.length?'<table><tr><th>日期</th><th>餐次</th><th>食物</th><th>热量</th><th></th></tr>'+sorted.map(function(r){return '<tr><td>'+r.date+'</td><td>'+r.meal+'</td><td>'+esc(r.food)+' '+r.amt+'</td><td>'+kcalText(r)+'</td><td><button class="del" data-deldiet="'+r.id+'">删</button></td></tr>';}).join('')+'</table>':'<p class="sub">还没有记录。</p>';
 document.querySelectorAll('[data-deldiet]').forEach(function(b){b.onclick=function(){state.diet=state.diet.filter(function(r){return r.id!==b.dataset.deldiet;});save();renderAll();toast('已删除');};});}
 document.getElementById('dietDate').addEventListener('change',function(){renderDiet();renderAnti();});
 document.getElementById('btnAddDiet').onclick=function(){
 var food=document.getElementById('dietFood').value.trim(),amt=parseFloat(document.getElementById('dietAmt').value);
 if(!food||!amt){toast('请填写食物和数量');return;}
-var f=FOODMAP[food];var kcal=f?f.kcal*amt/100:0,pro=f?f.pro*amt/100:0;
+var f=findFood(food);var kcal=f?f.kcal*amt/100:null,pro=f?f.pro*amt/100:null;
 state.diet.push({id:uid(),date:document.getElementById('dietDate').value||today(),meal:document.getElementById('dietMeal').value,food:food,amt:amt,kcal:kcal,pro:pro});
-save();document.getElementById('dietFood').value='';document.getElementById('dietAmt').value='';renderAll();toast('已记一笔');};
+save();document.getElementById('dietFood').value='';document.getElementById('dietAmt').value='';renderAll();toast(f?'已记一笔':'已记一笔（未估算：食物库无此食物）');};
 /* ---------- 体检全景 ---------- */
 var PANO=[['一般检查（身高体重血压）','bp',0],['内科','cat|专科检查',0],['外科','cat|专科检查',0],['眼科','cat|专科检查',0],['耳鼻喉科','cat|专科检查',0],['口腔科','cat|专科检查',0],
 ['血常规','cat|血常规',0],['尿常规','cat|尿常规',0],['粪便常规+潜血','cat|粪便常规',0],['肝功能','cat|肝功能',0],['肾功能','cat|肾功能',0],['血脂','cat|血脂',0],['血糖/糖化血红蛋白','cat|血糖',0],

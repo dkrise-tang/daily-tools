@@ -145,6 +145,7 @@ svg{max-width:100%;height:auto}
 <button data-tab="labs">化验检查</button>
 <button data-tab="bp">血压</button>
 <button data-tab="diet">饮食</button>
+<button data-tab="apple">苹果健康</button>
 <button data-tab="wiki">营养百科</button>
 <button data-tab="mind">健康认知</button>
 <button data-tab="pano">体检全景</button>
@@ -216,6 +217,18 @@ svg{max-width:100%;height:auto}
 </div>
 <div class="card"><h2>记录明细</h2><div id="dietList"></div></div>
 </section>
+<!-- 苹果健康 -->
+<section id="tab-apple">
+<div class="note">苹果健康的数据没法实时同步到网页，这里导入的是你在 iPhone「健康」App 里手动导出的文件：导一次算一次。以后想更新，重新导出再导入即可——相同日期会被新数据覆盖，重复导入不会叠加计算。</div>
+<div class="card"><h2>导入苹果健康导出文件</h2>
+<p class="sub">导出方法：打开 iPhone「健康」App → 点右上角头像 → 拉到最下面点「导出所有健康数据」→ 导出完成后，把得到的 export.zip 存到「文件」里，再回到这里选择它。也可以先把 zip 解压，直接选解压出来的 export.xml。会导入：步数、距离、活动能量、锻炼分钟、心率、静息心率、体重和锻炼记录。文件只在这台设备上解析，不会上传到任何服务器。文件可能较大（几十 MB），解析需要一些时间，请不要中途关闭页面。</p>
+<label>选择导出文件（.zip 或 .xml）</label><input type="file" id="ahFile" accept=".zip,.xml,application/zip,text/xml,application/xml">
+<button class="btn" id="btnAh">解析文件</button>
+<div id="ahStatus" class="sub" style="margin-top:8px"></div>
+<div id="ahPreview"></div>
+</div>
+<div id="ahBody"></div>
+</section>
 <!-- 营养百科 -->
 <section id="tab-wiki">
 <div class="card"><h2>营养百科</h2>
@@ -276,7 +289,7 @@ svg{max-width:100%;height:auto}
 <div style="margin-top:18px"><button class="btn danger" id="btnWipe">清空全部数据</button></div>
 </div>
 <div class="card"><h2>使用说明</h2>
-<p class="sub">1. 以后固定用同一个浏览器打开这个链接，数据才会连续（在微信里打开和在手机浏览器里打开是两份互不相通的数据）。<br>2. 化验数值只做记录和趋势参考，不做诊断；指标异常请咨询医生。<br>3. 就诊时打开「就诊一页纸」给医生看，可以省去口头描述。<br>4. 化验录入方式③「上传 PDF 文件」只适用于医院 App、公众号下载的电子版 PDF（带文字层）；扫描版 PDF 和报告照片暂不支持，那种情况请用粘贴文字或手动添加。</p>
+<p class="sub">1. 以后固定用同一个浏览器打开这个链接，数据才会连续（在微信里打开和在手机浏览器里打开是两份互不相通的数据）。<br>2. 化验数值只做记录和趋势参考，不做诊断；指标异常请咨询医生。<br>3. 就诊时打开「就诊一页纸」给医生看，可以省去口头描述。<br>4. 化验录入方式③「上传 PDF 文件」只适用于医院 App、公众号下载的电子版 PDF（带文字层）；扫描版 PDF 和报告照片暂不支持，那种情况请用粘贴文字或手动添加。<br>5. 「苹果健康」导入的是 iPhone 健康 App 手动导出的文件，不是实时同步；导入的数据同样只保存在这台设备里，也会包含在备份文件中，记得随档案一起定期导出备份。</p>
 </div>
 </section>
 </main>
@@ -291,7 +304,7 @@ svg{max-width:100%;height:auto}
 'use strict';
 var LSKEY='jiankangdangan-family-v1';
 var CATS=['血常规','尿常规','粪便常规','肝功能','肾功能','电解质','血脂','血糖','甲状腺功能','肿瘤标志物','凝血功能','心肌酶','炎症','骨代谢','影像检查','专科检查','其他'];
-var state={profile:{},labs:[],bps:[],diet:[],checks:{},anti:{},wiki:[],wikiSeeded:false,insights:[],legacyFamily:''};
+var state={profile:{},labs:[],bps:[],diet:[],checks:{},anti:{},wiki:[],wikiSeeded:false,insights:[],legacyFamily:'',apple:{days:{},weights:[],workouts:[]}};
 function normalizeState(){
 if(!state.profile||typeof state.profile!=='object')state.profile={};
 if(!Array.isArray(state.labs))state.labs=[];
@@ -301,6 +314,10 @@ if(!state.checks||typeof state.checks!=='object')state.checks={};
 if(!state.anti||typeof state.anti!=='object'||Array.isArray(state.anti))state.anti={};
 if(!Array.isArray(state.insights))state.insights=[];
 if(typeof state.legacyFamily!=='string')state.legacyFamily='';
+if(!state.apple||typeof state.apple!=='object'||Array.isArray(state.apple))state.apple={days:{},weights:[],workouts:[]};
+if(!state.apple.days||typeof state.apple.days!=='object'||Array.isArray(state.apple.days))state.apple.days={};
+if(!Array.isArray(state.apple.weights))state.apple.weights=[];
+if(!Array.isArray(state.apple.workouts))state.apple.workouts=[];
 if(state.wikiSeeded!==true){state.wiki=seedWiki();state.wikiSeeded=true;}
 if(!Array.isArray(state.wiki))state.wiki=[];}
 function load(){try{var s=localStorage.getItem(LSKEY);if(s){var d=JSON.parse(s);if(d&&d.labs)state=d;}}catch(e){}normalizeState();}
@@ -595,7 +612,7 @@ else{askDialog('标记为已完成',{field:true,fieldLabel:'完成日期',fieldT
 /* ---------- 就诊一页纸 ---------- */
 var KEYLABS=['低密度脂蛋白胆固醇','总胆固醇','甘油三酯','高密度脂蛋白胆固醇','空腹血糖','糖化血红蛋白','尿酸','肌酐','谷丙转氨酶','谷草转氨酶','促甲状腺激素','血红蛋白','白细胞','血小板'];
 function renderVisit(){
-var p=state.profile,bmi=bmiOf(p),age=ageOf(p.birth);
+var p=state.profile,bmi=bmiOf(p),age=ageOf(p.birth),ahW=ahLatestWeight();
 var latestBp=state.bps.slice().sort(function(a,b){return a.dt<b.dt?1:-1;})[0];
 var rows=KEYLABS.map(function(n){var recs=state.labs.filter(function(r){return r.name===n&&r.num!=null;}).sort(function(a,b){return a.date<b.date?1:-1;});
 if(!recs.length)return'';var r=recs[0];return '<tr><td>'+n+'</td><td class="'+(r.flag?'abn':'')+'">'+r.num+' '+(r.unit||'')+(r.flag?'（'+r.flag+'）':'')+'</td><td class="sub">'+r.date+'</td></tr>';}).join('');
@@ -606,7 +623,7 @@ document.getElementById('visitBody').innerHTML=
 '<tr><th>正在用药</th><td colspan="3">'+esc(p.meds||'无记录')+'</td></tr>'+
 '<tr><th>过敏史</th><td colspan="3">'+esc(p.allergies||'无记录')+'</td></tr>'+
 '<tr><th>家族史</th><td colspan="3">'+esc(p.family||'无记录')+'</td></tr>'+
-'<tr><th>最近血压</th><td colspan="3">'+(latestBp?latestBp.sys+'/'+latestBp.dia+' mmHg（'+esc(latestBp.dt.replace('T',' '))+'）':'暂无记录')+'</td></tr></table>'+
+'<tr><th>最近血压</th><td colspan="3">'+(latestBp?latestBp.sys+'/'+latestBp.dia+' mmHg（'+esc(latestBp.dt.replace('T',' '))+'）':'暂无记录')+'</td></tr>'+(ahW?'<tr><th>最近体重</th><td colspan="3">'+ahW.kg+' kg（苹果健康导入，'+ahW.date+'）</td></tr>':'')+'</table>'+
 '<h3>关键化验（每项最近一次）</h3>'+(rows?'<table><tr><th>项目</th><th>结果</th><th>日期</th></tr>'+rows+'</table>':'<p class="sub">暂无关键化验记录。</p>')+
 '<p class="sub" style="margin-top:8px">生成日期：'+today()+'。本页为个人记录汇总，不构成诊断。</p>';}
 /* ---------- 抗炎抗氧化清单 ---------- */
@@ -816,6 +833,217 @@ document.getElementById('btnCancelIns').onclick=function(){
 insEditId=null;document.getElementById('insFormTitle').textContent='记一条健康认知';
 ['insTitle','insObs','insIdea','insNext'].forEach(function(id){document.getElementById(id).value='';});
 document.getElementById('btnCancelIns').style.display='none';};
+/* ---------- 苹果健康导出导入（本机解析，不上传） ---------- */
+var pendingApple=null;
+var AH_T={steps:'HKQuantityTypeIdentifierStepCount',dist:'HKQuantityTypeIdentifierDistanceWalkingRunning',energy:'HKQuantityTypeIdentifierActiveEnergyBurned',exTime:'HKQuantityTypeIdentifierAppleExerciseTime',hr:'HKQuantityTypeIdentifierHeartRate',rhr:'HKQuantityTypeIdentifierRestingHeartRate',mass:'HKQuantityTypeIdentifierBodyMass'};
+var AH_WTYPES={HKWorkoutActivityTypeRunning:'跑步',HKWorkoutActivityTypeWalking:'步行',HKWorkoutActivityTypeCycling:'骑行',HKWorkoutActivityTypeSwimming:'游泳',HKWorkoutActivityTypeYoga:'瑜伽',HKWorkoutActivityTypeFunctionalStrengthTraining:'力量训练',HKWorkoutActivityTypeTraditionalStrengthTraining:'力量训练',HKWorkoutActivityTypeHiking:'徒步',HKWorkoutActivityTypeElliptical:'椭圆机',HKWorkoutActivityTypeRowing:'划船',HKWorkoutActivityTypeTennis:'网球',HKWorkoutActivityTypeBasketball:'篮球',HKWorkoutActivityTypeSoccer:'足球',HKWorkoutActivityTypeBadminton:'羽毛球',HKWorkoutActivityTypeTableTennis:'乒乓球',HKWorkoutActivityTypeDance:'舞蹈',HKWorkoutActivityTypeStairClimbing:'爬楼梯',HKWorkoutActivityTypeCoreTraining:'核心训练',HKWorkoutActivityTypeFlexibility:'柔韧训练',HKWorkoutActivityTypeCooldown:'放松整理',HKWorkoutActivityTypeMindAndBody:'身心训练',HKWorkoutActivityTypeCrossTraining:'交叉训练',HKWorkoutActivityTypeMixedCardio:'混合有氧',HKWorkoutActivityTypeHighIntensityIntervalTraining:'高强度间歇训练',HKWorkoutActivityTypeJumpRope:'跳绳',HKWorkoutActivityTypeTaiChi:'太极',HKWorkoutActivityTypePilates:'普拉提',HKWorkoutActivityTypeOther:'其他锻炼'};
+function ahParseAttrs(tag){var m={},re=/([\w:.]+)="([^"]*)"/g,x;while((x=re.exec(tag))!==null)m[x[1]]=x[2];return m;}
+function ahToKg(v,unit){v=parseFloat(v);if(isNaN(v))return null;if(unit==='lb')return v*0.45359237;if(unit==='g')return v/1000;return v;}
+function ahToKm(v,unit){v=parseFloat(v);if(isNaN(v))return null;if(unit==='mi')return v*1.60934;if(unit==='m')return v/1000;if(unit==='ft')return v*0.0003048;return v;}
+function ahNewAgg(){return {srcSteps:{},srcDist:{},srcEnergy:{},srcEx:{},hrSum:0,hrN:0,hrMin:null,hrMax:null,rhrSum:0,rhrN:0};}
+function ahNewAcc(){return {days:{},weights:[],workouts:[]};}
+function ahHandleRecord(a,acc){
+var t=a.type;if(!t||!a.startDate)return;
+var day=String(a.startDate).slice(0,10);if(day.length<10)return;
+if(t===AH_T.mass){var kg=ahToKg(a.value,a.unit);if(kg!=null)acc.weights.push({dt:String(a.startDate).slice(0,16),date:day,kg:Math.round(kg*10)/10});return;}
+if(t!==AH_T.steps&&t!==AH_T.dist&&t!==AH_T.energy&&t!==AH_T.exTime&&t!==AH_T.hr&&t!==AH_T.rhr)return;
+var v=parseFloat(a.value);if(isNaN(v))return;
+var g=acc.days[day];if(!g){g=acc.days[day]=ahNewAgg();}
+var src=a.sourceName||'';
+if(t===AH_T.steps)g.srcSteps[src]=(g.srcSteps[src]||0)+v;
+else if(t===AH_T.dist){var km=ahToKm(v,a.unit);if(km!=null)g.srcDist[src]=(g.srcDist[src]||0)+km;}
+else if(t===AH_T.energy)g.srcEnergy[src]=(g.srcEnergy[src]||0)+v;
+else if(t===AH_T.exTime)g.srcEx[src]=(g.srcEx[src]||0)+v;
+else if(t===AH_T.hr){g.hrSum+=v;g.hrN++;if(g.hrMin===null||v<g.hrMin)g.hrMin=v;if(g.hrMax===null||v>g.hrMax)g.hrMax=v;}
+else if(t===AH_T.rhr){g.rhrSum+=v;g.rhrN++;}}
+function ahHandleWorkout(openTag,segment,acc){
+var a=ahParseAttrs(openTag);if(!a.startDate)return;
+var day=String(a.startDate).slice(0,10);if(day.length<10)return;
+var dur=parseFloat(a.duration);
+if(!isNaN(dur)){if(a.durationUnit==='sec')dur=dur/60;else if(a.durationUnit==='hr')dur=dur*60;}
+var distKm=a.totalDistance!=null?ahToKm(a.totalDistance,a.totalDistanceUnit):null;
+var energy=a.totalEnergyBurned!=null?parseFloat(a.totalEnergyBurned):null;
+if(segment){var re=/<WorkoutStatistics[^>]*>/g,m;
+while((m=re.exec(segment))!==null){var sa=ahParseAttrs(m[0]),sum=parseFloat(sa.sum);if(isNaN(sum))continue;
+if(sa.type===AH_T.energy&&(energy===null||isNaN(energy)))energy=sum;
+if((sa.type===AH_T.dist||sa.type==='HKQuantityTypeIdentifierDistanceCycling'||sa.type==='HKQuantityTypeIdentifierDistanceSwimming')&&distKm===null)distKm=ahToKm(sum,sa.unit);}}
+acc.workouts.push({dt:String(a.startDate).slice(0,16),date:day,type:AH_WTYPES[a.workoutActivityType]||String(a.workoutActivityType||'锻炼').replace('HKWorkoutActivityType',''),min:isNaN(dur)?null:Math.round(dur*10)/10,km:distKm===null||isNaN(distKm)?null:Math.round(distKm*100)/100,kcal:energy===null||isNaN(energy)?null:Math.round(energy)});}
+function ahScanText(text,acc,final){
+var pos=0,n=text.length;
+while(pos<n){
+var ir=text.indexOf('<Record',pos),iw=text.indexOf('<Workout',pos),idx=-1,isW=false;
+if(ir>=0&&(iw<0||ir<iw))idx=ir;else if(iw>=0){idx=iw;isW=true;}
+if(idx<0)break;
+var after=text.charAt(idx+(isW?8:7));
+if(after&&!/[\s/>]/.test(after)){pos=idx+1;continue;}
+var gt=text.indexOf('>',idx);
+if(gt<0){pos=idx;break;}
+var openTag=text.slice(idx,gt+1),selfClose=openTag.slice(-2)==='/>';
+if(!isW){ahHandleRecord(ahParseAttrs(openTag),acc);pos=gt+1;continue;}
+if(selfClose){ahHandleWorkout(openTag,'',acc);pos=gt+1;continue;}
+var end=text.indexOf('</Workout>',gt+1);
+if(end<0){
+if(!final&&text.length-idx<400000){pos=idx;break;}
+ahHandleWorkout(openTag,'',acc);pos=gt+1;continue;}
+ahHandleWorkout(openTag,text.slice(gt+1,end),acc);pos=end+10;}
+if(final)return '';
+var rest=text.slice(pos);
+if(rest.indexOf('<Record')===0||rest.indexOf('<Workout')===0)return rest;
+return rest.slice(-24);}
+function ahScanStream(stream,acc,onProgress){
+var reader=stream.getReader(),dec=new TextDecoder('utf-8'),buf='',seen=0,lastProg=0;
+function pump(){return reader.read().then(function(res){
+if(res.done){ahScanText(buf+dec.decode(),acc,true);return;}
+var chunk=res.value;
+seen+=chunk.byteLength||0;
+buf=ahScanText(buf+dec.decode(chunk,{stream:true}),acc,false);
+if(onProgress&&seen-lastProg>4*1024*1024){lastProg=seen;onProgress(seen);}
+return pump();});}
+return pump();}
+function ahFinalize(acc){
+var days={};
+function mx(map){var best=null;Object.keys(map).forEach(function(k){if(best===null||map[k]>best)best=map[k];});return best;}
+Object.keys(acc.days).forEach(function(d){var g=acc.days[d],day={};
+var st=mx(g.srcSteps);if(st!==null)day.steps=Math.round(st);
+var di=mx(g.srcDist);if(di!==null)day.distKm=Math.round(di*100)/100;
+var en=mx(g.srcEnergy);if(en!==null)day.kcal=Math.round(en);
+var ex=mx(g.srcEx);if(ex!==null)day.exMin=Math.round(ex);
+if(g.hrN){day.hrAvg=Math.round(g.hrSum/g.hrN);day.hrMin=Math.round(g.hrMin);day.hrMax=Math.round(g.hrMax);}
+if(g.rhrN)day.rhr=Math.round(g.rhrSum/g.rhrN);
+days[d]=day;});
+acc.weights.sort(function(a,b){return a.dt<b.dt?-1:1;});
+acc.weights.forEach(function(w){if(!days[w.date])days[w.date]={};days[w.date].weightKg=w.kg;});
+acc.workouts.sort(function(a,b){return a.dt<b.dt?-1:1;});
+return {days:days,weights:acc.weights,workouts:acc.workouts};}
+function ahFindZipEntry(buf){
+var dv=new DataView(buf),len=dv.byteLength,eocd=-1;
+for(var i=len-22;i>=0&&i>len-22-66000;i--){if(dv.getUint32(i,true)===0x06054b50){eocd=i;break;}}
+if(eocd<0)return null;
+var total=dv.getUint16(eocd+10,true),p=dv.getUint32(eocd+16,true),best=null,bestScore=-1;
+for(var k=0;k<total;k++){
+if(p+46>len||dv.getUint32(p,true)!==0x02014b50)break;
+var nlen=dv.getUint16(p+28,true),elen=dv.getUint16(p+30,true),clen=dv.getUint16(p+32,true);
+var name=new TextDecoder('utf-8').decode(new Uint8Array(buf,p+46,nlen)),score=-1;
+if(/export\.xml$/i.test(name))score=3;
+else if(/\.xml$/i.test(name)&&!/cda/i.test(name))score=2;
+if(score>bestScore){bestScore=score;best={name:name,method:dv.getUint16(p+10,true),csize:dv.getUint32(p+20,true),lho:dv.getUint32(p+42,true)};}
+p+=46+nlen+elen+clen;}
+return best;}
+function ahZipEntryStream(file,buf,entry){
+var dv=new DataView(buf),p=entry.lho;
+if(p+30>buf.byteLength)return null;
+var start=p+30+dv.getUint16(p+26,true)+dv.getUint16(p+28,true);
+var blob=file.slice(start,start+entry.csize);
+if(entry.method===0)return blob.stream();
+if(entry.method===8){
+if(typeof DecompressionStream==='undefined')return null;
+try{return blob.stream().pipeThrough(new DecompressionStream('deflate-raw'));}catch(e){return null;}}
+return null;}
+function ahDayKeys(){return Object.keys(state.apple.days).sort();}
+function ahLatestWeight(){var ws=state.apple.weights.slice().sort(function(a,b){return a.dt<b.dt?-1:1;});return ws.length?ws[ws.length-1]:null;}
+function showAhPreview(fin){
+var pv=document.getElementById('ahPreview');
+var keys=Object.keys(fin.days).sort();
+var allDates=keys.slice();
+fin.workouts.forEach(function(w){if(allDates.indexOf(w.date)<0)allDates.push(w.date);});
+allDates.sort();
+var recent=keys.slice(-7).reverse();
+var rows=recent.map(function(d){var g=fin.days[d];return '<tr><td>'+d+'</td><td>'+(g.steps!=null?g.steps:'—')+'</td><td>'+(g.hrAvg!=null?g.hrAvg:'—')+'</td><td>'+(g.weightKg!=null?g.weightKg+' kg':'—')+'</td></tr>';}).join('');
+pv.innerHTML='<h3>解析结果预览（尚未保存）</h3>'+
+'<p class="sub">数据范围：'+(allDates.length?allDates[0]+' 至 '+allDates[allDates.length-1]:'—')+'；共 '+keys.length+' 天有按天记录、体重 '+fin.weights.length+' 条、锻炼 '+fin.workouts.length+' 次。确认导入后，相同日期的数据会被这次的覆盖，重复导入不会叠加。</p>'+
+(rows?'<table><tr><th>日期</th><th>步数</th><th>平均心率</th><th>体重</th></tr>'+rows+'</table>':'')+
+'<button class="btn" id="btnAhConfirm">确认导入</button><button class="btn sec" id="btnAhCancel">取消</button>';
+document.getElementById('btnAhCancel').onclick=function(){pendingApple=null;pv.innerHTML='';document.getElementById('ahStatus').textContent='已取消，没有导入任何数据。';};
+document.getElementById('btnAhConfirm').onclick=function(){
+Object.keys(fin.days).forEach(function(d){state.apple.days[d]=fin.days[d];});
+var seen={};state.apple.weights.forEach(function(w){seen[w.dt+'|'+w.kg]=1;});
+fin.weights.forEach(function(w){var k=w.dt+'|'+w.kg;if(!seen[k]){state.apple.weights.push(w);seen[k]=1;}});
+state.apple.weights.sort(function(a,b){return a.dt<b.dt?-1:1;});
+var wseen={};state.apple.workouts.forEach(function(w){wseen[w.dt+'|'+w.type]=1;});
+fin.workouts.forEach(function(w){var k=w.dt+'|'+w.type;if(!wseen[k]){state.apple.workouts.push(w);wseen[k]=1;}});
+state.apple.workouts.sort(function(a,b){return a.dt<b.dt?1:-1;});
+save();pendingApple=null;pv.innerHTML='';document.getElementById('ahStatus').textContent='导入完成，下方就是导入的数据。';
+renderAll();toast('苹果健康数据已导入');};}
+document.getElementById('btnAh').onclick=function(){
+var st=document.getElementById('ahStatus'),pv=document.getElementById('ahPreview');
+var f=document.getElementById('ahFile').files[0];
+if(!f){toast('先选择苹果健康导出文件');return;}
+var btn=this;btn.disabled=true;pv.innerHTML='';pendingApple=null;
+st.textContent='正在解析，文件越大需要的时间越久，请稍候……';
+var acc=ahNewAcc();
+var isZip=/\.zip$/i.test(f.name)||f.type==='application/zip';
+function prog(bytes){st.textContent='正在解析……已处理约 '+Math.max(1,Math.round(bytes/1048576))+' MB';}
+function done(){btn.disabled=false;
+var fin=ahFinalize(acc);
+if(!Object.keys(fin.days).length&&!fin.weights.length&&!fin.workouts.length){st.textContent='没有从这个文件里读到步数、体重、心率或锻炼记录。请确认选的是健康 App「导出所有健康数据」得到的文件（export.zip，或解压出来的 export.xml）；注意不要选 export_cda.xml。';return;}
+pendingApple=fin;
+st.textContent='解析完成，请核对下面的汇总，确认后才导入。';
+showAhPreview(fin);}
+function fail(msg){btn.disabled=false;st.textContent=msg;}
+if(isZip){
+f.arrayBuffer().then(function(buf){
+var entry=null;try{entry=ahFindZipEntry(buf);}catch(e){entry=null;}
+if(!entry){fail('这个 zip 里没有找到健康数据文件（export.xml）。请确认选的是健康 App 导出的 export.zip。');return;}
+var stream=ahZipEntryStream(f,buf,entry);
+if(!stream){fail('这台设备的浏览器不支持直接解压 zip。请先在「文件」App 里长按 export.zip 解压，再回到这里选择解压出来的 export.xml。');return;}
+ahScanStream(stream,acc,prog).then(done).catch(function(){fail('解析这个 zip 时出错。可以试试先解压，再直接选择 export.xml 导入。');});
+}).catch(function(){fail('文件读取失败，请重新选择。');});
+}else{
+try{ahScanStream(f.stream(),acc,prog).then(done).catch(function(){fail('这个文件没有解析成功。请确认选的是 export.zip 或其中的 export.xml。');});}
+catch(e){fail('这台设备的浏览器读不了这个文件。可以换用手机自带浏览器打开本页再试。');}}};
+function ahStepsChart(daysAsc){
+var pts=daysAsc.filter(function(d){return state.apple.days[d].steps!=null;});
+if(pts.length<2)return '';
+var W=640,H=170,PL=8,PR=8,PT=16,PB=22,mxv=0;
+pts.forEach(function(d){if(state.apple.days[d].steps>mxv)mxv=state.apple.days[d].steps;});
+if(mxv<=0)return '';
+var bw=(W-PL-PR)/pts.length,s='<svg viewBox="0 0 '+W+' '+H+'" role="img">';
+pts.forEach(function(d,i){var v=state.apple.days[d].steps,h=(H-PT-PB)*v/mxv,x=PL+bw*i+bw*0.18,y=PT+(H-PT-PB-h);
+s+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+(bw*0.64).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="2" style="fill:var(--main)"/>';
+s+='<text x="'+(PL+bw*i+bw/2)+'" y="'+(y-4)+'" font-size="10" text-anchor="middle" style="fill:var(--txt)">'+v+'</text>';
+s+='<text x="'+(PL+bw*i+bw/2)+'" y="'+(H-6)+'" font-size="9.5" text-anchor="middle" style="fill:var(--sub)">'+d.slice(5)+'</text>';});
+return s+'</svg>';}
+function ahWeightChart(){
+var ws=state.apple.weights.slice().sort(function(a,b){return a.dt<b.dt?-1:1;});
+if(ws.length>90)ws=ws.slice(-90);
+if(ws.length<2)return '';
+var W=640,H=190,PL=40,PR=12,PT=12,PB=26;
+var vals=ws.map(function(w){return w.kg;}),mn=Math.min.apply(null,vals),mxv=Math.max.apply(null,vals);
+if(mxv===mn){mxv=mn+1;}var pad=(mxv-mn)*0.2;mn-=pad;mxv+=pad;
+function X(i){return PL+(W-PL-PR)*i/(ws.length-1);}
+function Y(v){return PT+(H-PT-PB)*(1-(v-mn)/(mxv-mn));}
+var s='<svg viewBox="0 0 '+W+' '+H+'" role="img"><line x1="'+PL+'" y1="'+(H-PB)+'" x2="'+(W-PR)+'" y2="'+(H-PB)+'" style="stroke:var(--fieldline)"/>';
+s+='<polyline fill="none" stroke-width="2" style="stroke:var(--main)" points="'+ws.map(function(w,i){return X(i).toFixed(1)+','+Y(w.kg).toFixed(1);}).join(' ')+'"/>';
+var li=ws.length-1;
+s+='<circle cx="'+X(li)+'" cy="'+Y(ws[li].kg)+'" r="3.5" style="fill:var(--main)"/><text x="'+X(li)+'" y="'+(Y(ws[li].kg)-8)+'" font-size="11" text-anchor="end" style="fill:var(--txt)">'+ws[li].kg+' kg</text>';
+s+='<text x="4" y="'+(PT+4)+'" font-size="10" style="fill:var(--sub)">'+mxv.toFixed(1)+'</text><text x="4" y="'+(H-PB)+'" font-size="10" style="fill:var(--sub)">'+mn.toFixed(1)+'</text>';
+s+='<text x="'+PL+'" y="'+(H-8)+'" font-size="10" style="fill:var(--sub)">'+ws[0].date.slice(2)+'</text><text x="'+(W-PR)+'" y="'+(H-8)+'" font-size="10" text-anchor="end" style="fill:var(--sub)">'+ws[li].date.slice(2)+'</text></svg>';
+return s+'<p class="sub">共 '+state.apple.weights.length+' 条体重记录'+(state.apple.weights.length>90?'，图上只画最近 90 条':'')+'。</p>';}
+function renderApple(){
+var box=document.getElementById('ahBody');if(!box)return;
+var keys=ahDayKeys();
+if(!keys.length&&!state.apple.weights.length&&!state.apple.workouts.length){box.innerHTML='';return;}
+var last7=keys.slice(-7),stepDays=last7.filter(function(d){return state.apple.days[d].steps!=null;});
+var avg7=stepDays.length?Math.round(stepDays.reduce(function(s,d){return s+state.apple.days[d].steps;},0)/stepDays.length):null;
+var lw=ahLatestWeight();
+var html='<div class="card"><h2>已导入的数据</h2><div class="grid">'+
+'<div class="stat"><b>'+keys.length+' 天</b><span>'+(keys.length?keys[0]+' 至 '+keys[keys.length-1]:'暂无按天数据')+'</span></div>'+
+'<div class="stat"><b>'+(avg7!=null?avg7:'—')+'</b><span>最近 7 天日均步数</span></div>'+
+'<div class="stat"><b>'+(lw?lw.kg+' kg':'—')+'</b><span>最近体重'+(lw?'（'+lw.date+'）':'')+'</span></div>'+
+'<div class="stat"><b>'+state.apple.workouts.length+' 次</b><span>锻炼记录</span></div></div>'+
+'<p class="sub" style="margin-top:6px">步数、距离、活动能量按主要来源估算，避免手表和手机重复计算，与健康 App 里显示的数字可能略有差别。心率为当天所有采样的平均值。</p></div>';
+var last14=keys.slice(-14).reverse();
+if(last14.length){
+html+='<div class="card"><h2>近 14 天</h2>'+ahStepsChart(keys.slice(-14))+'<div style="overflow-x:auto"><table><tr><th>日期</th><th>步数</th><th>距离</th><th>活动能量</th><th>锻炼</th><th>心率 均/静息</th><th>体重</th></tr>'+
+last14.map(function(d){var g=state.apple.days[d];return '<tr><td style="white-space:nowrap">'+d.slice(5)+'</td><td>'+(g.steps!=null?g.steps:'—')+'</td><td>'+(g.distKm!=null?g.distKm+' km':'—')+'</td><td>'+(g.kcal!=null?g.kcal+' kcal':'—')+'</td><td>'+(g.exMin!=null?g.exMin+' 分钟':'—')+'</td><td>'+(g.hrAvg!=null?g.hrAvg+(g.rhr!=null?' / '+g.rhr:''):(g.rhr!=null?'— / '+g.rhr:'—'))+'</td><td>'+(g.weightKg!=null?g.weightKg+' kg':'—')+'</td></tr>';}).join('')+'</table></div></div>';}
+if(state.apple.weights.length>=2)html+='<div class="card"><h2>体重趋势</h2>'+ahWeightChart()+'</div>';
+else if(lw)html+='<div class="card"><h2>体重</h2><p class="sub">最近一次：'+lw.kg+' kg（'+lw.date+'）。有 2 条以上体重记录后会显示趋势图。</p></div>';
+if(state.apple.workouts.length){
+html+='<div class="card"><h2>最近锻炼</h2><table><tr><th>日期</th><th>类型</th><th>时长</th><th>距离</th><th>能量</th></tr>'+
+state.apple.workouts.slice(0,20).map(function(w){return '<tr><td style="white-space:nowrap">'+w.date.slice(5)+'</td><td>'+esc(w.type)+'</td><td>'+(w.min!=null?w.min+' 分钟':'—')+'</td><td>'+(w.km!=null?w.km+' km':'—')+'</td><td>'+(w.kcal!=null?w.kcal+' kcal':'—')+'</td></tr>';}).join('')+'</table>'+(state.apple.workouts.length>20?'<p class="sub">只显示最近 20 次，共 '+state.apple.workouts.length+' 次。</p>':'')+'</div>';}
+html+='<div class="card"><button class="btn danger" id="btnAhClear">清除苹果健康导入的数据</button><p class="sub" style="margin-top:6px">只清除从苹果健康导入的数据；化验、血压、饮食等其他记录不受影响。</p></div>';
+box.innerHTML=html;
+document.getElementById('btnAhClear').onclick=function(){askDialog('清除全部苹果健康导入数据？化验、血压、饮食等记录不受影响。',{okText:'清除'},function(){state.apple={days:{},weights:[],workouts:[]};save();renderAll();toast('已清除');});};}
 /* ---------- 总览与备份 ---------- */
 function renderHome(){
 var bmi=bmiOf(state.profile);
@@ -827,12 +1055,17 @@ document.getElementById('homeStats').innerHTML=
 '<div class="stat"><b>'+state.bps.length+'</b><span>血压记录</span></div>'+
 '<div class="stat"><b>'+(lastLab||'—')+'</b><span>最近一次检查</span></div>'+
 '<div class="stat"><b>'+(bmi?bmi.toFixed(1):'—')+'</b><span>BMI</span></div>';
+var ahKeysH=ahDayKeys();
+if(ahKeysH.length){var ahHtml='',s7=ahKeysH.slice(-7).filter(function(d){return state.apple.days[d].steps!=null;});
+if(s7.length)ahHtml+='<div class="stat"><b>'+Math.round(s7.reduce(function(s,d){return s+state.apple.days[d].steps;},0)/s7.length)+'</b><span>近 7 天日均步数（苹果健康）</span></div>';
+var ahLwH=ahLatestWeight();if(ahLwH)ahHtml+='<div class="stat"><b>'+ahLwH.kg+' kg</b><span>最近体重（苹果健康 '+ahLwH.date+'）</span></div>';
+if(ahHtml)document.getElementById('homeStats').innerHTML+=ahHtml;}
 var tips=[];
 if(abnCount)tips.push('<span class="pill bad">有 '+abnCount+' 条化验被标为偏高/偏低，请在「化验检查」里看趋势，复诊时带给医生</span>');
 if(missing)tips.push('<span class="pill warn">体检全景里有 '+missing+' 个常规项目未见记录</span>');
 if(!state.labs.length)tips.push('<span class="pill">先从录入最近一次体检报告开始</span>');
 document.getElementById('homeTips').innerHTML=tips.join('');
-document.getElementById('dataCounts').innerHTML='<span class="pill">化验 '+state.labs.length+' 条</span><span class="pill">血压 '+state.bps.length+' 条</span><span class="pill">饮食 '+state.diet.length+' 条</span><span class="pill">百科 '+(state.wiki?state.wiki.length:0)+' 篇</span><span class="pill">认知 '+state.insights.length+' 条</span>';}
+document.getElementById('dataCounts').innerHTML='<span class="pill">化验 '+state.labs.length+' 条</span><span class="pill">血压 '+state.bps.length+' 条</span><span class="pill">饮食 '+state.diet.length+' 条</span><span class="pill">百科 '+(state.wiki?state.wiki.length:0)+' 篇</span><span class="pill">认知 '+state.insights.length+' 条</span><span class="pill">苹果健康 '+Object.keys(state.apple.days).length+' 天</span>';}
 document.getElementById('btnExport').onclick=function(){
 var blob=new Blob([JSON.stringify(state,null,1)],{type:'application/json'});
 var a=document.createElement('a');a.href=URL.createObjectURL(blob);
@@ -845,8 +1078,8 @@ askDialog('导入将覆盖当前全部数据，确定继续？',{okText:'覆盖�
 rd.readAsText(f);};
 document.getElementById('btnWipe').onclick=function(){
 askDialog('确定清空全部数据？建议先导出备份。',{okText:'继续'},function(){
-askDialog('再确认一次：清空后无法恢复。',{okText:'清空全部'},function(){state={profile:{},labs:[],bps:[],diet:[],checks:{},anti:{},insights:[],legacyFamily:'',wiki:seedWiki(),wikiSeeded:true};wikiEditId=null;insEditId=null;save();renderAll();toast('已清空');});});};
-function renderAll(){renderProfile();renderHome();renderLabs();renderBp();renderDiet();renderAnti();renderWiki();renderMind();renderPano();renderVisit();}
+askDialog('再确认一次：清空后无法恢复。',{okText:'清空全部'},function(){state={profile:{},labs:[],bps:[],diet:[],checks:{},anti:{},insights:[],legacyFamily:'',apple:{days:{},weights:[],workouts:[]},wiki:seedWiki(),wikiSeeded:true};wikiEditId=null;insEditId=null;save();renderAll();toast('已清空');});});};
+function renderAll(){renderProfile();renderHome();renderLabs();renderBp();renderDiet();renderApple();renderAnti();renderWiki();renderMind();renderPano();renderVisit();}
 load();
 ['pasteDate','mDate','dietDate'].forEach(function(id){document.getElementById(id).value=today();});
 renderAll();
